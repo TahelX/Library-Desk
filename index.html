@@ -3,986 +3,1141 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Library Desk</title>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<title>Ledger — Library Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/[email protected]/dist/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/[email protected]/html5-qrcode.min.js"></script>
 <style>
-  :root{
-    --teal:#9ED3DC;
-    --yellow:#FEFD99;
-    --pink:#FCB7C7;
-    --mauve:#CA6180;
-    --teal-dark:#3d6b72;
-    --mauve-dark:#7a3650;
-    --ink:#2c2a2e;
-    --paper:#fffdf6;
-    --card:#ffffff;
-    --line:#e7e0d0;
-    --muted:#8a8579;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:var(--paper);
-    color:var(--ink);
-  }
-  .app{max-width:960px;margin:0 auto;padding:0 16px 60px;}
+:root{
+  --ink:#1B2A3D;
+  --ink-2:#28405c;
+  --parchment:#EFE6CE;
+  --card:#FFFDF7;
+  --stamp:#B23A32;
+  --brass:#A9822C;
+  --green:#3F6B4B;
+  --line:#d9cfae;
+  --text:#241f14;
+  --muted:#6b6350;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'IBM Plex Sans', sans-serif;
+  background:var(--parchment);
+  color:var(--text);
+  min-height:100vh;
+}
+::selection{background:var(--brass); color:#fff;}
+a{color:inherit;}
 
-  /* header */
-  .topbar{
-    background:var(--mauve);
-    color:#fff;
-    padding:18px 16px;
-    margin:0 -16px 20px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:10px;
-  }
-  .brand{display:flex;align-items:center;gap:10px;}
-  .brand-mark{
-    width:34px;height:34px;border-radius:8px;background:var(--yellow);
-    display:flex;align-items:center;justify-content:center;font-size:18px;
-  }
-  .brand h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;}
-  .brand span{font-size:12px;opacity:.85;display:block;}
-  .who{font-size:13px;display:flex;align-items:center;gap:10px;}
-  .who button{
-    background:rgba(255,255,255,.18);
-    border:1px solid rgba(255,255,255,.4);
-    color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;
-  }
-  .who button:hover{background:rgba(255,255,255,.3);}
+/* ---------- layout ---------- */
+.app{display:grid; grid-template-columns:230px 1fr; min-height:100vh;}
+.sidebar{
+  background:var(--ink);
+  color:#e9e2c9;
+  padding:28px 18px;
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh;
+}
+.brand{
+  font-family:'Source Serif 4', serif;
+  font-weight:700;
+  font-size:22px;
+  letter-spacing:.02em;
+  color:#fff;
+  margin-bottom:2px;
+}
+.brand-sub{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--brass);
+  margin-bottom:34px;
+}
+.nav{list-style:none; display:flex; flex-direction:column; gap:2px;}
+.nav button{
+  all:unset;
+  cursor:pointer;
+  display:flex; align-items:center; gap:10px;
+  padding:11px 12px;
+  border-radius:3px;
+  font-size:14px;
+  font-weight:500;
+  color:#cdc4a5;
+  transition:background .15s, color .15s;
+}
+.nav button .num{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:var(--brass);
+  width:18px;
+}
+.nav button:hover{background:rgba(255,255,255,.06); color:#fff;}
+.nav button.active{background:var(--brass); color:#1B2A3D; font-weight:600;}
+.nav button.active .num{color:#1B2A3D;}
+.sidebar-foot{
+  margin-top:auto;
+  padding-top:20px;
+  border-top:1px solid rgba(255,255,255,.12);
+  font-size:12px;
+  color:#9a927a;
+  line-height:1.6;
+}
 
-  /* sign-in screen */
-  .signin-wrap{
-    max-width:380px;margin:60px auto;
-    background:var(--card);border:1px solid var(--line);border-radius:16px;
-    padding:32px 28px;text-align:center;
-  }
-  .signin-wrap .brand-mark{margin:0 auto 14px;width:52px;height:52px;font-size:26px;border-radius:14px;}
-  .signin-wrap h2{margin:0 0 4px;font-size:20px;}
-  .signin-wrap p{color:var(--muted);font-size:13px;margin:0 0 24px;}
-  .signin-wrap select, .signin-wrap input{
-    width:100%;padding:11px 12px;margin-bottom:12px;border-radius:10px;
-    border:1px solid var(--line);font-size:14px;background:#fdfcf7;
-  }
-  .signin-wrap button.primary{
-    width:100%;padding:12px;border:none;border-radius:10px;
-    background:var(--mauve);color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;
-  }
-  .signin-wrap button.primary:hover{background:var(--mauve-dark);}
-  .err{color:#b23a3a;font-size:12px;margin-top:-4px;margin-bottom:10px;display:none;}
+.main{padding:26px 34px 60px;}
+.topbar{
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:26px; gap:20px;
+}
+.topbar h1{
+  font-family:'Source Serif 4', serif;
+  font-size:26px;
+  font-weight:600;
+}
+.topbar .tag{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:.06em;
+}
+.search-global{
+  flex:1; max-width:340px;
+  position:relative;
+}
+.search-global input{
+  width:100%;
+  padding:9px 12px 9px 30px;
+  border:1px solid var(--line);
+  background:var(--card);
+  border-radius:3px;
+  font-size:13px;
+  font-family:'IBM Plex Sans', sans-serif;
+}
+.search-global::before{
+  content:"⌕";
+  position:absolute; left:10px; top:50%; transform:translateY(-50%);
+  color:var(--muted); font-size:15px;
+}
 
-  /* tabs */
-  .tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
-  .tabs button{
-    padding:9px 16px;border-radius:20px;border:1px solid var(--line);
-    background:#fff;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;
-  }
-  .tabs button.active{background:var(--teal);border-color:var(--teal);}
-  .tabs button:hover:not(.active){background:#f4f1e6;}
+.view{display:none; animation:fade .25s ease;}
+.view.active{display:block;}
+@keyframes fade{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
 
-  .panel{display:none;}
-  .panel.active{display:block;}
+/* ---------- cards / stat grid ---------- */
+.stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px;}
+.stat{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:18px 18px 16px;
+  position:relative;
+  overflow:hidden;
+}
+.stat::before{
+  content:"";
+  position:absolute; left:0; top:0; bottom:0; width:3px;
+  background:var(--brass);
+}
+.stat.warn::before{background:var(--stamp);}
+.stat .label{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:8px;
+}
+.stat .value{
+  font-family:'Source Serif 4', serif;
+  font-size:34px; font-weight:600;
+  color:var(--ink);
+}
+.stat.warn .value{color:var(--stamp);}
 
-  /* stat cards */
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
-  .stat .num{font-size:26px;font-weight:700;}
-  .stat .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
-  .stat.teal{background:#eaf6f8;}
-  .stat.pink{background:#fdf0f2;}
-  .stat.yellow{background:#fffce0;}
+.panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:22px;
+  margin-bottom:22px;
+}
+.panel h2{
+  font-family:'Source Serif 4', serif;
+  font-size:18px; font-weight:600; margin-bottom:4px;
+}
+.panel .sub{font-size:12.5px; color:var(--muted); margin-bottom:18px;}
 
-  /* cards / forms */
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
-  .card h3{margin:0 0 14px;font-size:15px;}
-  .row{display:flex;gap:10px;flex-wrap:wrap;}
-  .row > div{flex:1;min-width:140px;}
-  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
-  input,select{
-    width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);
-    font-size:14px;background:#fdfcf7;
-  }
-  button.btn{
-    padding:10px 18px;border-radius:8px;border:none;background:var(--teal-dark);
-    color:#fff;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;
-  }
-  button.btn:hover{opacity:.9;}
-  button.btn.secondary{background:var(--mauve);}
-  button.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+/* ---------- forms ---------- */
+.form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px 18px;}
+.field{display:flex; flex-direction:column; gap:6px;}
+.field.full{grid-column:1/-1;}
+.field label{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--muted);
+}
+.field input, .field select{
+  padding:10px 11px;
+  border:1px solid var(--line);
+  border-radius:3px;
+  background:#fffef9;
+  font-size:14px;
+  font-family:'IBM Plex Sans', sans-serif;
+  color:var(--text);
+}
+.field input:focus, .field select:focus{
+  outline:2px solid var(--brass); outline-offset:1px;
+}
+.field.barcode-field{position:relative;}
+.field.barcode-field input{padding-right:38px; font-family:'IBM Plex Mono', monospace;}
+.scan-btn{
+  all:unset; cursor:pointer;
+  position:absolute; right:6px; top:29px;
+  width:28px; height:28px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--ink); color:#fff; border-radius:3px;
+  font-size:14px;
+}
+.scan-btn:hover{background:var(--ink-2);}
 
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th{
-    text-align:left;padding:8px 8px;background:#f4f1e6;color:var(--muted);
-    font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;
-  }
-  td{padding:9px 8px;border-bottom:1px solid var(--line);}
-  tr:last-child td{border-bottom:none;}
-  .badge{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block;}
-  .badge.out{background:var(--pink);color:var(--mauve-dark);}
-  .badge.in{background:#dcefe1;color:#2e6b45;}
-  .badge.overdue{background:#f7d3c9;color:#8a3a20;}
-  .actions button{
-    padding:5px 10px;font-size:11px;border-radius:6px;border:1px solid var(--line);
-    background:#fff;cursor:pointer;margin-right:4px;
-  }
-  .actions button:hover{background:#f4f1e6;}
-  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
-  .search{margin-bottom:12px;}
-  .table-wrap{overflow-x:auto;}
-  .toast{
-    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-    background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;
-    font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;
-  }
-  .toast.show{opacity:1;}
-  .footer-note{font-size:12px;color:var(--muted);text-align:center;margin-top:30px;}
-  .small-link{background:none;border:none;color:var(--mauve-dark);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;}
+.btn-row{display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;}
+.btn{
+  all:unset; cursor:pointer;
+  padding:10px 18px;
+  border-radius:3px;
+  font-size:13.5px; font-weight:600;
+  font-family:'IBM Plex Sans', sans-serif;
+  text-align:center;
+}
+.btn-primary{background:var(--ink); color:#fff;}
+.btn-primary:hover{background:var(--ink-2);}
+.btn-brass{background:var(--brass); color:#1B2A3D;}
+.btn-brass:hover{filter:brightness(1.08);}
+.btn-outline{background:transparent; color:var(--ink); border:1px solid var(--line) !important; border-style:solid;}
+.btn-outline:hover{background:#f3edda;}
+.btn-danger{background:transparent; color:var(--stamp); border:1px solid var(--stamp);}
+.btn-danger:hover{background:#fdecea;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+
+.helper-msg{font-size:12.5px; padding:10px 12px; border-radius:3px; margin-top:14px; display:none;}
+.helper-msg.show{display:block;}
+.helper-msg.ok{background:#eaf3ec; color:var(--green); border:1px solid #cfe3d4;}
+.helper-msg.err{background:#fdecea; color:var(--stamp); border:1px solid #f2cbc7;}
+
+/* ---------- lookup result card ---------- */
+.lookup-card{
+  display:none;
+  margin-top:16px;
+  padding:14px 16px;
+  border:1px dashed var(--brass);
+  border-radius:3px;
+  background:#fbf6e8;
+  gap:14px;
+  align-items:flex-start;
+}
+.lookup-card.show{display:flex;}
+.lookup-card .stamp-icon{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10px; letter-spacing:.08em;
+  border:1.5px solid var(--stamp); color:var(--stamp);
+  padding:3px 7px; border-radius:2px; transform:rotate(-4deg);
+  white-space:nowrap;
+}
+.lookup-card .lc-title{font-weight:600; font-size:14.5px;}
+.lookup-card .lc-meta{font-size:12.5px; color:var(--muted); margin-top:2px;}
+
+/* ---------- tables ---------- */
+.table-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:4px;}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+thead th{
+  text-align:left;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted);
+  background:#f3edda;
+  padding:11px 14px;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+tbody td{
+  padding:11px 14px;
+  border-bottom:1px solid #ece4cb;
+  vertical-align:middle;
+}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#faf6e9;}
+.mono{font-family:'IBM Plex Mono', monospace; font-size:12.5px;}
+.pill{
+  display:inline-block;
+  font-family:'IBM Plex Mono', monospace;
+  font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
+  padding:3px 8px; border-radius:10px;
+  border:1px solid transparent;
+}
+.pill-issued{background:#eef3f8; color:#2a5d8f; border-color:#cddceb;}
+.pill-overdue{background:#fdecea; color:var(--stamp); border-color:#f2cbc7;}
+.pill-returned{background:#eaf3ec; color:var(--green); border-color:#cfe3d4;}
+.pill-soon{background:#fbf1de; color:var(--brass); border-color:#ecdcae;}
+.row-overdue{background:#fdf5f4;}
+.row-actions{display:flex; gap:8px;}
+.icon-btn{
+  all:unset; cursor:pointer;
+  font-size:12.5px; font-weight:600;
+  padding:5px 9px; border-radius:3px;
+  border:1px solid var(--line);
+  color:var(--ink);
+}
+.icon-btn:hover{background:#f3edda;}
+.icon-btn.danger{color:var(--stamp); border-color:#f2cbc7;}
+.icon-btn.danger:hover{background:#fdecea;}
+.empty-state{
+  padding:40px 20px; text-align:center; color:var(--muted); font-size:13.5px;
+}
+
+.toolbar{display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; flex-wrap:wrap;}
+.toolbar .left{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
+.filter-tabs{display:flex; gap:6px;}
+.filter-tabs button{
+  all:unset; cursor:pointer;
+  padding:7px 13px; font-size:12.5px; font-weight:500;
+  border-radius:14px; border:1px solid var(--line);
+  color:var(--muted);
+}
+.filter-tabs button.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+.local-search{
+  padding:8px 12px; border:1px solid var(--line); border-radius:3px;
+  font-size:13px; min-width:200px; background:#fffef9;
+}
+input[type="file"]{display:none;}
+
+/* barcode scan modal */
+.modal-overlay{
+  display:none; position:fixed; inset:0; background:rgba(27,42,61,.55);
+  z-index:50; align-items:center; justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--card); border-radius:6px; width:min(420px, 92vw);
+  padding:22px; position:relative;
+}
+.modal h3{font-family:'Source Serif 4', serif; font-size:18px; margin-bottom:4px;}
+.modal .sub{font-size:12.5px; color:var(--muted); margin-bottom:14px;}
+.modal .close{
+  all:unset; cursor:pointer; position:absolute; right:16px; top:16px;
+  font-size:18px; color:var(--muted);
+}
+#reader{width:100%; border-radius:4px; overflow:hidden; border:1px solid var(--line);}
+.scan-fallback{margin-top:12px; font-size:12px; color:var(--muted);}
+
+footer.credit{
+  text-align:center; font-size:11.5px; color:var(--muted);
+  margin-top:10px; font-family:'IBM Plex Mono', monospace;
+}
+
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:relative; height:auto; flex-direction:row; overflow-x:auto; align-items:center; padding:14px;}
+  .brand,.brand-sub,.sidebar-foot{display:none;}
+  .nav{flex-direction:row;}
+  .main{padding:18px;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .form-grid{grid-template-columns:1fr;}
+  .topbar{flex-direction:column; align-items:flex-start;}
+  .search-global{max-width:100%;}
+}
 </style>
 </head>
 <body>
 
-<div id="root" class="app"></div>
-<div id="toast" class="toast"></div>
-
-<script>
-const SESSION_KEY = "libdesk_session_user";
-
-/* ---------- Firebase config ----------
-   Paste the config from your Firebase project's web app setup here.
-   (Firebase Console > Project settings > General > Your apps > SDK setup and configuration)
-   If left as placeholders, the app falls back to this browser's local
-   storage only — no cross-device sync. */
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDbIEUQrzp8Mq29KIJrPJwlEHSPG-vtysY",
-  authDomain: "library-desk-7aede.firebaseapp.com",
-  projectId: "library-desk-7aede",
-  storageBucket: "library-desk-7aede.firebasestorage.app",
-  messagingSenderId: "574482014556",
-  appId: "1:574482014556:web:7a142fb27f59b42db72199"
-};
-const firebaseReady = FIREBASE_CONFIG.apiKey !== "PASTE_YOUR_API_KEY";
-let db = null;
-if(firebaseReady){
-  firebase.initializeApp(FIREBASE_CONFIG);
-  db = firebase.firestore();
-}
-const DOC_REF = firebaseReady ? db.collection('library').doc('data') : null;
-
-let state = {
-  user: sessionStorage.getItem(SESSION_KEY) || null,
-  tab: "dashboard",
-  books: [],
-  students: [],
-  issues: [],
-  accounts: {},
-  lastExport: null,
-  loaded: false,
-  authError: ""
-};
-
-async function sha256(text){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-function toast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'), 2200);
-}
-
-function uid(prefix){
-  return prefix + Math.random().toString(36).slice(2,8).toUpperCase();
-}
-function todayStr(){
-  return new Date().toISOString().slice(0,10);
-}
-function addDays(dateStr, days){
-  const d = new Date(dateStr);
-  d.setDate(d.getDate()+days);
-  return d.toISOString().slice(0,10);
-}
-function fmtDate(d){
-  if(!d) return "-";
-  const dt = new Date(d);
-  return dt.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'});
-}
-function isOverdue(dueDate){
-  return new Date(dueDate) < new Date(todayStr());
-}
-
-/* ---------- storage ----------
-   Uses Firestore (synced live across every device) when FIREBASE_CONFIG
-   is filled in. Falls back to this browser's own localStorage otherwise
-   — that copy is only visible on this one device. */
-let unsubscribeSync = null;
-
-async function loadData(){
-  if(firebaseReady){
-    try{
-      const snap = await DOC_REF.get();
-      if(snap.exists) applyData(snap.data());
-    }catch(e){
-      toast("Couldn't reach the cloud database — check your Firebase setup");
-    }
-    // Listen for changes made from other devices and update live.
-    unsubscribeSync = DOC_REF.onSnapshot((snap)=>{
-      if(snap.exists){
-        applyData(snap.data());
-        if(state.loaded) render();
-      }
-    });
-  }else{
-    try{
-      const raw = localStorage.getItem('library-data');
-      if(raw) applyData(JSON.parse(raw));
-    }catch(e){
-      // no saved data yet, that's fine on first run
-    }
-  }
-  state.loaded = true;
-  checkAutoExport();
-  render();
-}
-function applyData(d){
-  state.books = d.books || [];
-  state.students = d.students || [];
-  state.issues = d.issues || [];
-  state.accounts = d.accounts || {};
-  state.lastExport = d.lastExport || null;
-}
-
-let saveTimer = null;
-async function saveData(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async ()=>{
-    const payload = {
-      books: state.books,
-      students: state.students,
-      issues: state.issues,
-      accounts: state.accounts,
-      lastExport: state.lastExport
-    };
-    try{
-      if(firebaseReady){
-        await DOC_REF.set(payload);
-      }else{
-        localStorage.setItem('library-data', JSON.stringify(payload));
-      }
-    }catch(e){
-      toast("Couldn't save — check your connection or Firebase setup");
-    }
-  }, 250);
-}
-
-/* ---------- auth ----------
-   Accounts (name -> password hash) are stored in the same shared data
-   object, so any of your devices can sign in with the same credentials.
-   First time a name is used, it registers that password. After that,
-   the password must match. This is basic protection for a shared desk
-   tool, not bank-grade security — anyone with the file can read the
-   stored hashes if they dig into browser storage. */
-async function trySignIn(name, password){
-  name = name.trim();
-  if(!name || !password){
-    state.authError = "Enter a name and password";
-    render();
-    return;
-  }
-  const hash = await sha256(password);
-  const existing = state.accounts[name];
-  if(existing){
-    if(existing !== hash){
-      state.authError = "Wrong password for that name";
-      render();
-      return;
-    }
-  }else{
-    state.accounts[name] = hash;
-    saveData();
-  }
-  state.authError = "";
-  state.user = name;
-  sessionStorage.setItem(SESSION_KEY, name);
-  render();
-}
-function signOut(){
-  state.user = null;
-  sessionStorage.removeItem(SESSION_KEY);
-  render();
-}
-
-/* ---------- book / student / issue logic ---------- */
-function addBook(name, code, copies){
-  if(state.books.find(b=>b.code===code)){
-    toast("A book with that code already exists");
-    return false;
-  }
-  state.books.push({code, name, copies: copies||1, added: todayStr()});
-  saveData(); render(); toast("Book added");
-  return true;
-}
-function deleteBook(code){
-  if(state.issues.some(i=>i.bookCode===code && i.status==='out')){
-    toast("Can't delete — a copy is currently issued");
-    return;
-  }
-  state.books = state.books.filter(b=>b.code!==code);
-  saveData(); render();
-}
-function addStudent(name, id){
-  if(state.students.find(s=>s.id===id)){
-    toast("A student with that ID already exists");
-    return false;
-  }
-  state.students.push({id, name, added: todayStr()});
-  saveData(); render(); toast("Student added");
-  return true;
-}
-function deleteStudent(id){
-  if(state.issues.some(i=>i.studentId===id && i.status==='out')){
-    toast("Can't delete — this student has a book out");
-    return;
-  }
-  state.students = state.students.filter(s=>s.id!==id);
-  saveData(); render();
-}
-function issuedCopiesCount(code){
-  return state.issues.filter(i=>i.bookCode===code && i.status==='out').length;
-}
-function issueBook(bookCode, studentId, days){
-  const book = state.books.find(b=>b.code===bookCode);
-  const student = state.students.find(s=>s.id===studentId);
-  if(!book || !student) { toast("Pick a book and a student"); return; }
-  if(issuedCopiesCount(bookCode) >= book.copies){
-    toast("No copies available");
-    return;
-  }
-  const issueDate = todayStr();
-  state.issues.push({
-    issueNo: uid("ISS-"),
-    bookCode, bookName: book.name,
-    studentId, studentName: student.name,
-    issueDate,
-    dueDate: addDays(issueDate, days||14),
-    returnDate: null,
-    renewCount: 0,
-    status: 'out',
-    by: state.user
-  });
-  saveData(); render(); toast("Book issued");
-}
-function returnBook(issueNo){
-  const rec = state.issues.find(i=>i.issueNo===issueNo);
-  if(!rec) return;
-  rec.returnDate = todayStr();
-  rec.status = 'returned';
-  saveData(); render(); toast("Book returned");
-}
-function renewBook(issueNo){
-  const rec = state.issues.find(i=>i.issueNo===issueNo);
-  if(!rec || rec.status!=='out') return;
-  rec.dueDate = addDays(rec.dueDate, 14);
-  rec.renewCount += 1;
-  saveData(); render(); toast("Renewed for 14 more days");
-}
-
-/* ---------- sample data (civil engineering diploma library) ---------- */
-const CIVIL_TITLES = [
-  "Building Construction","Surveying I","Surveying II","Strength of Materials",
-  "Theory of Structures","Concrete Technology","Reinforced Cement Concrete Design",
-  "Steel Structure Design","Soil Mechanics and Foundation Engineering",
-  "Highway Engineering","Railway Engineering","Bridge Engineering",
-  "Irrigation Engineering","Water Supply and Sanitary Engineering",
-  "Environmental Engineering","Estimating Costing and Valuation",
-  "Construction Management","Engineering Mechanics","Fluid Mechanics and Hydraulics",
-  "Hydrology and Water Resources Engineering","Building Materials and Construction",
-  "Advanced Surveying","Structural Analysis","Foundation Engineering",
-  "Airport Engineering","Harbour and Dock Engineering","Town Planning",
-  "Remote Sensing and GIS","AutoCAD for Civil Engineers","Building Drawing",
-  "Civil Engineering Drawing","Repair and Rehabilitation of Structures",
-  "Prestressed Concrete","Earthquake Resistant Design of Structures",
-  "Transportation Engineering","Pavement Design","Geotechnical Engineering",
-  "Quantity Surveying","Construction Planning and Scheduling",
-  "Green Building Technology","Disaster Management","Project Management for Civil Engineers",
-  "Applied Mechanics","Strength of Materials Lab Manual","Concrete Lab Manual",
-  "Surveying Field Practice","Engineering Geology","Basic Civil Engineering",
-  "Mechanics of Solids","Design of Steel Structures","Design of RCC Structures",
-  "Water Resources Engineering","Sanitary Engineering","Construction Technology",
-  "Building Services","Landscape Architecture","Urban Infrastructure Planning",
-  "Modern Construction Materials","Value Engineering in Construction",
-  "Total Station Surveying","Highway Materials and Pavement Testing",
-  "Bridge Design and Construction","Dam Engineering","Coastal Engineering",
-  "Numerical Methods for Civil Engineers","Engineering Mathematics for Diploma",
-  "Applied Physics for Engineers","Applied Chemistry for Engineers",
-  "Environmental Science and Engineering","Communication Skills for Engineers",
-  "Entrepreneurship Development","Professional Practice Ethics and Human Values",
-  "Computer Aided Building Design","Building Maintenance and Repair",
-  "Estimation and Costing","Soil Testing Laboratory Manual",
-  "Fluid Mechanics Laboratory Manual","Surveying Instruments and Practice",
-  "Construction Equipment and Machinery","Masonry Structures",
-  "Timber Structures Design","Composite Materials in Construction",
-  "Smart Cities and Infrastructure","Building Information Modeling Basics",
-  "Structural Dynamics","Advanced Concrete Technology",
-  "Ground Improvement Techniques","Rock Mechanics","Tunnel Engineering",
-  "Water and Wastewater Treatment","Solid Waste Management",
-  "Air Pollution and Control","Noise Pollution Control",
-  "Occupational Health and Safety in Construction","Building Bye Laws and Codes",
-  "National Building Code Handbook","Indian Standard Codes for Civil Engineers",
-  "Engineering Economics","Strength of Materials Problems and Solutions",
-  "Basic Electrical and Electronics for Civil Engineers","Workshop Practice Manual",
-  "Engineering Graphics","Computer Applications in Civil Engineering"
-];
-function buildSampleBooks(){
-  const books = [];
-  let n = 1;
-  const authors = ["Khurmi","Punmia","Rangwala","Gupta","Duggal","Bhavikatti","Arora","Shah","Ramamrutham","Jindal"];
-  while(books.length < 300){
-    const title = CIVIL_TITLES[n % CIVIL_TITLES.length];
-    const author = authors[n % authors.length];
-    const edition = 2 + (n % 5);
-    const fullTitle = `${title} (${edition}th Ed. - ${author})`;
-    const code = `B-${String(n).padStart(3,'0')}`;
-    if(!books.find(b=>b.code===code)){
-      books.push({
-        code, name: fullTitle,
-        copies: 1 + (n % 3),
-        added: todayStr()
-      });
-    }
-    n++;
-  }
-  return books;
-}
-const SAMPLE_STUDENTS = [
-  {id:"AEI/24/CV/002", name:"ABHIJEET CHUTIA"},
-  {id:"AEI/24/CV/007", name:"AMLAN DUTTA"},
-  {id:"AEI/24/CV/013", name:"ARPITA CHAKRABARTY"},
-  {id:"AEI/24/CV/020", name:"BIBAN KEMPRAI"},
-  {id:"AEI/24/CV/039", name:"HRISHIKESH DUTTA"},
-  {id:"GP/24/CV/005", name:"ASTHA KASHYAP"},
-  {id:"GP/24/CV/016", name:"JUNMONI BASUMATARY"},
-  {id:"NOP/24/CV/013", name:"CHAITANYA SAIKIA"},
-  {id:"NOP/24/CV/029", name:"KANGKANA BORAH"},
-  {id:"SIP/24/CV/003", name:"ROHIT GOALA"},
-  {id:"SIP/24/CV/024", name:"NISHAT TASNIM SODIAL"},
-  {id:"DIP/24/CV/006", name:"ANINDITA CHETIA"},
-  {id:"DIP/24/CV/024", name:"KOYSIK DUTTA"},
-  {id:"BOP/24/CV/030", name:"MOSTAKIN MOSTAK"},
-  {id:"SON/24/CV/022", name:"JOHN BHARALI"}
-];
-function loadSampleData(){
-  if(state.books.length || state.students.length){
-    if(!confirm("This adds sample books, students, and a demo issue history to your existing records. Continue?")) return;
-  }
-  const sampleBooks = buildSampleBooks();
-  sampleBooks.forEach(b=>{ if(!state.books.find(x=>x.code===b.code)) state.books.push(b); });
-  SAMPLE_STUDENTS.forEach(s=>{ if(!state.students.find(x=>x.id===s.id)) state.students.push({...s, added: todayStr()}); });
-
-  // demo track record: a mix of returned, overdue, and currently-out issues
-  const demo = [
-    {book:"B-001", student:SAMPLE_STUDENTS[0].id, daysAgoIssued:20, daysLoan:14, returned:true, returnedDaysAgo:5},
-    {book:"B-002", student:SAMPLE_STUDENTS[1].id, daysAgoIssued:10, daysLoan:14, returned:false},
-    {book:"B-003", student:SAMPLE_STUDENTS[2].id, daysAgoIssued:25, daysLoan:14, returned:false},
-    {book:"B-004", student:SAMPLE_STUDENTS[3].id, daysAgoIssued:3, daysLoan:14, returned:false},
-    {book:"B-005", student:SAMPLE_STUDENTS[4].id, daysAgoIssued:30, daysLoan:14, returned:true, returnedDaysAgo:16},
-    {book:"B-006", student:SAMPLE_STUDENTS[5].id, daysAgoIssued:8, daysLoan:14, returned:false},
-  ];
-  demo.forEach(d=>{
-    const book = state.books.find(b=>b.code===d.book);
-    const student = state.students.find(s=>s.id===d.student);
-    if(!book || !student) return;
-    const issueDate = addDays(todayStr(), -d.daysAgoIssued);
-    const dueDate = addDays(issueDate, d.daysLoan);
-    state.issues.push({
-      issueNo: uid("ISS-"),
-      bookCode: book.code, bookName: book.name,
-      studentId: student.id, studentName: student.name,
-      issueDate, dueDate,
-      returnDate: d.returned ? addDays(todayStr(), -d.returnedDaysAgo) : null,
-      renewCount: 0,
-      status: d.returned ? 'returned' : 'out',
-      by: state.user
-    });
-  });
-  saveData(); render(); toast("Sample data loaded — 300 books, 15 students, 6 demo records");
-}
-
-/* ---------- import from excel ---------- */
-function readWorkbookFile(file, onDone){
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    try{
-      const wb = XLSX.read(e.target.result, {type:'binary'});
-      onDone(wb);
-    }catch(err){
-      toast("Couldn't read that file — is it a valid Excel file?");
-    }
-  };
-  reader.readAsBinaryString(file);
-}
-function pick(row, keys){
-  for(const k of keys){
-    for(const rk of Object.keys(row)){
-      if(rk.toLowerCase().replace(/[^a-z0-9]/g,'') === k){
-        if(row[rk] !== undefined && row[rk] !== '') return row[rk];
-      }
-    }
-  }
-  return undefined;
-}
-function importBooksFile(file){
-  readWorkbookFile(file, (wb)=>{
-    const sheetName = wb.SheetNames.find(n=>/book/i.test(n)) || wb.SheetNames[0];
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
-    let added = 0, skipped = 0;
-    rows.forEach(row=>{
-      const name = pick(row, ['title','name','booktitle','book']);
-      const code = pick(row, ['code','bookcode']);
-      const copies = parseInt(pick(row, ['copies','qty','quantity'])) || 1;
-      if(!name || !code){ skipped++; return; }
-      const codeStr = String(code).trim();
-      if(state.books.find(b=>b.code===codeStr)){ skipped++; return; }
-      state.books.push({code: codeStr, name: String(name).trim(), copies, added: todayStr()});
-      added++;
-    });
-    saveData(); render();
-    toast(`Imported ${added} book${added===1?'':'s'}${skipped?`, skipped ${skipped}`:''}`);
-  });
-}
-function importStudentsFile(file){
-  readWorkbookFile(file, (wb)=>{
-    const sheetName = wb.SheetNames.find(n=>/student/i.test(n)) || wb.SheetNames[0];
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
-    let added = 0, skipped = 0;
-    rows.forEach(row=>{
-      const name = pick(row, ['name','studentname']);
-      const id = pick(row, ['studentid','id','rollno','rollnumber','enrolmentno']);
-      if(!name || !id){ skipped++; return; }
-      const idStr = String(id).trim();
-      if(state.students.find(s=>s.id===idStr)){ skipped++; return; }
-      state.students.push({id: idStr, name: String(name).trim(), added: todayStr()});
-      added++;
-    });
-    saveData(); render();
-    toast(`Imported ${added} student${added===1?'':'s'}${skipped?`, skipped ${skipped}`:''}`);
-  });
-}
-
-/* ---------- export ---------- */
-function buildWorkbook(){
-  const wb = XLSX.utils.book_new();
-  const booksSheet = state.books.map(b=>({
-    Code:b.code, Title:b.name, Copies:b.copies,
-    "Currently issued": issuedCopiesCount(b.code),
-    "Date added": b.added
-  }));
-  const studentsSheet = state.students.map(s=>({
-    "Student ID": s.id, Name: s.name, "Date added": s.added
-  }));
-  const issuesSheet = state.issues.map(i=>({
-    "Issue no": i.issueNo, "Book code": i.bookCode, "Book title": i.bookName,
-    "Student ID": i.studentId, "Student name": i.studentName,
-    "Issue date": i.issueDate, "Due date": i.dueDate,
-    "Return date": i.returnDate || "", "Renewals": i.renewCount,
-    Status: i.status, "Issued by": i.by || ""
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(booksSheet), "Books");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentsSheet), "Students");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issuesSheet), "Issue records");
-  return wb;
-}
-function exportNow(silent){
-  const wb = buildWorkbook();
-  const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
-  XLSX.writeFile(wb, `library-records-${stamp}.xlsx`);
-  state.lastExport = new Date().toISOString();
-  saveData();
-  if(!silent) toast("Excel file downloaded");
-}
-function checkAutoExport(){
-  const last = state.lastExport ? new Date(state.lastExport) : null;
-  const dayMs = 24*60*60*1000;
-  if(!last || (Date.now() - last.getTime()) > dayMs){
-    // Auto export is due. Browsers can't silently write files in the
-    // background, so we trigger the download the next time someone opens the app.
-    setTimeout(()=>{ exportNow(true); toast("24hr backup exported to your downloads"); }, 800);
-  }
-}
-
-/* ---------- rendering ---------- */
-function render(){
-  const root = document.getElementById('root');
-  if(!state.loaded){
-    root.innerHTML = `<div class="empty" style="margin-top:80px;">Loading library data…</div>`;
-    return;
-  }
-  if(!state.user){
-    root.innerHTML = signInScreen();
-    attachHandlers();
-    return;
-  }
-  root.innerHTML = shell();
-  attachHandlers();
-}
-
-function signInScreen(){
-  const existingNames = Object.keys(state.accounts);
-  return `
-  <div class="signin-wrap">
-    <div class="brand-mark">📚</div>
-    <h2>Library Desk</h2>
-    <p>${existingNames.length ? "Sign in with your name and password" : "Create the first librarian account for this desk"}</p>
-    ${existingNames.length ? `<datalist id="knownNames">${existingNames.map(n=>`<option value="${n}">`).join('')}</datalist>` : ''}
-    <input id="staffName" list="knownNames" placeholder="Your name" autocomplete="username">
-    <input id="staffPassword" type="password" placeholder="Password" autocomplete="current-password">
-    ${state.authError ? `<div class="err" style="display:block;">${state.authError}</div>` : ''}
-    <button class="primary" id="signInBtn">Continue</button>
-    <p style="font-size:11px;color:var(--muted);margin-top:14px;">
-      New name? Just type it with a password to set up that account.
-    </p>
-  </div>`;
-}
-
-function shell(){
-  const overdue = state.issues.filter(i=>i.status==='out' && isOverdue(i.dueDate)).length;
-  const out = state.issues.filter(i=>i.status==='out').length;
-  return `
-  <div class="topbar">
-    <div class="brand">
-      <div class="brand-mark">📚</div>
-      <div><h1>Library Desk</h1><span>${state.books.length} titles · ${state.students.length} students</span></div>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">Ledger</div>
+    <div class="brand-sub">Library Desk</div>
+    <ul class="nav">
+      <li><button data-view="dashboard" class="active"><span class="num">01</span>Dashboard</button></li>
+      <li><button data-view="issue"><span class="num">02</span>Issue Book</button></li>
+      <li><button data-view="return"><span class="num">03</span>Return / Renew</button></li>
+      <li><button data-view="books"><span class="num">04</span>Books</button></li>
+      <li><button data-view="students"><span class="num">05</span>Students</button></li>
+      <li><button data-view="records"><span class="num">06</span>Records</button></li>
+    </ul>
+    <div class="sidebar-foot">
+      Local demo data.<br>Connect a database to persist for real.
     </div>
-    <div class="who">
-      Signed in as <strong>${state.user}</strong>
-      <button id="signOutBtn">Sign out</button>
-    </div>
-  </div>
+  </aside>
 
-  <div class="tabs">
-    ${tabBtn('dashboard','Dashboard')}
-    ${tabBtn('issue','Issue a book')}
-    ${tabBtn('books','Books')}
-    ${tabBtn('students','Students')}
-    ${tabBtn('history','All records')}
-  </div>
+  <!-- MAIN -->
+  <main class="main">
 
-  <div class="panel active">
-    ${state.tab==='dashboard' ? dashboardPanel(out, overdue) : ''}
-    ${state.tab==='issue' ? issuePanel() : ''}
-    ${state.tab==='books' ? booksPanel() : ''}
-    ${state.tab==='students' ? studentsPanel() : ''}
-    ${state.tab==='history' ? historyPanel() : ''}
-  </div>
-
-  <div class="footer-note">
-    ${firebaseReady
-      ? `Synced live across all your devices.`
-      : `<span style="color:#b23a3a;">Cloud sync not set up — data is only saved on this device. Add your Firebase config to enable syncing.</span>`}
-    Last backup: ${state.lastExport ? fmtDate(state.lastExport) : 'never'} ·
-    <button class="small-link" id="exportBtn">Export Excel backup now</button>
-  </div>
-  `;
-}
-function tabBtn(id,label){
-  return `<button data-tab="${id}" class="${state.tab===id?'active':''}">${label}</button>`;
-}
-
-function dashboardPanel(out, overdue){
-  const recent = [...state.issues].sort((a,b)=> (b.issueDate>a.issueDate?1:-1)).slice(0,6);
-  return `
-  <div class="stats">
-    <div class="stat teal"><div class="num">${state.books.length}</div><div class="lbl">Books in library</div></div>
-    <div class="stat pink"><div class="num">${out}</div><div class="lbl">Currently issued</div></div>
-    <div class="stat yellow"><div class="num">${overdue}</div><div class="lbl">Overdue</div></div>
-    <div class="stat"><div class="num">${state.students.length}</div><div class="lbl">Registered students</div></div>
-  </div>
-  <div class="card">
-    <h3>Recent activity</h3>
-    ${recent.length? recentTable(recent) : `<div class="empty">No activity yet. Issue your first book from the "Issue a book" tab.</div>`}
-  </div>
-  <div class="card">
-    <h3>Starter data</h3>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
-      Load 300 sample civil engineering diploma textbooks, 15 real student names, and a demo issue history
-      (some returned, some overdue, some currently out) so you can see how tracking works before adding your own.
-    </p>
-    <button class="btn ghost" id="loadSampleBtn">Load sample data</button>
-  </div>`;
-}
-function recentTable(rows){
-  return `<div class="table-wrap"><table>
-    <tr><th>Book</th><th>Student</th><th>Issued</th><th>Status</th></tr>
-    ${rows.map(r=>`<tr>
-      <td>${r.bookName}</td><td>${r.studentName}</td><td>${fmtDate(r.issueDate)}</td>
-      <td>${statusBadge(r)}</td>
-    </tr>`).join('')}
-  </table></div>`;
-}
-function statusBadge(r){
-  if(r.status==='returned') return `<span class="badge in">Returned</span>`;
-  if(isOverdue(r.dueDate)) return `<span class="badge overdue">Overdue</span>`;
-  return `<span class="badge out">Issued</span>`;
-}
-
-function issuePanel(){
-  const available = state.books.filter(b=> issuedCopiesCount(b.code) < b.copies );
-  return `
-  <div class="card">
-    <h3>Issue a book</h3>
-    ${(!state.books.length || !state.students.length) ?
-      `<div class="empty">Add at least one book and one student first (see the Books and Students tabs).</div>` :
-      `<div class="row">
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="topbar">
         <div>
-          <label>Book</label>
-          <select id="issueBook">
-            <option value="">Select book</option>
-            ${available.map(b=>`<option value="${b.code}">${b.name} (${b.code}) — ${b.copies-issuedCopiesCount(b.code)} free</option>`).join('')}
-          </select>
+          <h1>Dashboard</h1>
+          <div class="tag">TODAY — <span id="today-date"></span></div>
         </div>
-        <div>
-          <label>Student</label>
-          <select id="issueStudent">
-            <option value="">Select student</option>
-            ${state.students.map(s=>`<option value="${s.id}">${s.name} (${s.id})</option>`).join('')}
-          </select>
-        </div>
-        <div>
-          <label>Loan period (days)</label>
-          <input id="issueDays" type="number" value="14" min="1">
+        <div class="search-global"><input id="global-search" placeholder="Search a book title, ISBN, or student name…"></div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Total Books</div><div class="value" id="stat-books">0</div></div>
+        <div class="stat"><div class="label">Currently Issued</div><div class="value" id="stat-issued">0</div></div>
+        <div class="stat warn"><div class="label">Overdue</div><div class="value" id="stat-overdue">0</div></div>
+        <div class="stat"><div class="label">Students</div><div class="value" id="stat-students">0</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>Due soon &amp; overdue</h2>
+        <div class="sub">Books due within 3 days, or already overdue.</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Book</th><th>Student</th><th>Due Date</th><th>Status</th></tr></thead>
+            <tbody id="dash-table"></tbody>
+          </table>
         </div>
       </div>
-      <button class="btn" id="issueSubmit">Issue book</button>`
-    }
-  </div>
 
-  <div class="card">
-    <h3>Books currently out</h3>
-    ${outTable()}
-  </div>`;
+      <div class="panel" id="search-results-panel" style="display:none;">
+        <h2>Search results</h2>
+        <div class="sub" id="search-results-sub"></div>
+        <div class="table-wrap"><table><thead><tr><th>Type</th><th>Title / Name</th><th>Detail</th><th>Status</th></tr></thead><tbody id="search-results-body"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- ISSUE -->
+    <section class="view" id="view-issue">
+      <div class="topbar"><div><h1>Issue Book</h1><div class="tag">SCAN OR SEARCH → ASSIGN → CONFIRM</div></div></div>
+
+      <div class="panel">
+        <h2>1. Identify the book</h2>
+        <div class="sub">Scan the barcode, or type the ISBN / barcode manually.</div>
+        <div class="form-grid">
+          <div class="field barcode-field full">
+            <label>Barcode / ISBN</label>
+            <input id="issue-barcode" placeholder="Scan or type barcode, then press Enter">
+            <button class="scan-btn" data-scan-target="issue-barcode" title="Scan with camera">▣</button>
+          </div>
+        </div>
+        <div class="lookup-card" id="issue-book-found">
+          <div class="stamp-icon">ON FILE</div>
+          <div>
+            <div class="lc-title" id="issue-book-title"></div>
+            <div class="lc-meta" id="issue-book-meta"></div>
+          </div>
+        </div>
+        <div class="helper-msg err" id="issue-book-error">No book found with that barcode. Add it under Books first.</div>
+      </div>
+
+      <div class="panel">
+        <h2>2. Select the student</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label>Roll No.</label>
+            <input id="issue-roll" placeholder="e.g. 22CE014">
+          </div>
+          <div class="field">
+            <label>Due Date</label>
+            <input id="issue-due" type="date">
+          </div>
+        </div>
+        <div class="lookup-card" id="issue-student-found">
+          <div class="stamp-icon">ON FILE</div>
+          <div><div class="lc-title" id="issue-student-name"></div><div class="lc-meta" id="issue-student-meta"></div></div>
+        </div>
+        <div class="helper-msg err" id="issue-student-error">No student found with that roll number. Add them under Students first.</div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="issue-confirm-btn">Issue Book</button>
+        </div>
+        <div class="helper-msg ok" id="issue-success">Book issued successfully.</div>
+      </div>
+    </section>
+
+    <!-- RETURN -->
+    <section class="view" id="view-return">
+      <div class="topbar"><div><h1>Return / Renew</h1><div class="tag">SCAN A BOOK CURRENTLY ISSUED</div></div></div>
+      <div class="panel">
+        <h2>Find the loan</h2>
+        <div class="form-grid">
+          <div class="field barcode-field full">
+            <label>Barcode / ISBN</label>
+            <input id="return-barcode" placeholder="Scan or type barcode, then press Enter">
+            <button class="scan-btn" data-scan-target="return-barcode" title="Scan with camera">▣</button>
+          </div>
+        </div>
+        <div class="helper-msg err" id="return-error">This book is not currently issued to anyone.</div>
+
+        <div id="return-details" style="display:none; margin-top:18px;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Book</th><th>Student</th><th>Issued</th><th>Due</th><th>Status</th></tr></thead>
+              <tbody id="return-row"></tbody>
+            </table>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-brass" id="renew-btn">Renew — extend 14 days</button>
+            <button class="btn btn-primary" id="return-confirm-btn">Mark as Returned</button>
+          </div>
+          <div class="helper-msg ok" id="return-success"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BOOKS -->
+    <section class="view" id="view-books">
+      <div class="topbar"><div><h1>Books</h1><div class="tag" id="books-count-tag">0 TITLES ON FILE</div></div></div>
+
+      <div class="panel">
+        <h2>Add a book</h2>
+        <div class="form-grid">
+          <div class="field barcode-field">
+            <label>Barcode / ISBN</label>
+            <input id="add-book-barcode" placeholder="Scan, or type manually">
+            <button class="scan-btn" data-scan-target="add-book-barcode" title="Scan with camera">▣</button>
+          </div>
+          <div class="field"><label>Title</label><input id="add-book-title" placeholder="Book title"></div>
+          <div class="field"><label>Author</label><input id="add-book-author" placeholder="Author name"></div>
+          <div class="field"><label>Category</label><input id="add-book-category" placeholder="e.g. Engineering, Fiction"></div>
+          <div class="field"><label>Total Copies</label><input id="add-book-copies" type="number" min="1" value="1"></div>
+        </div>
+        <div class="lookup-card" id="add-book-lookup">
+          <div class="stamp-icon">FOUND ONLINE</div>
+          <div><div class="lc-title" id="add-book-lookup-title"></div><div class="lc-meta" id="add-book-lookup-meta"></div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="add-book-btn">Add Book</button>
+          <button class="btn btn-outline" id="lookup-book-btn">Look up details by ISBN</button>
+        </div>
+        <div class="helper-msg ok" id="add-book-success">Book added.</div>
+        <div class="helper-msg err" id="add-book-error">Enter at least a barcode and title.</div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar">
+          <div class="left">
+            <h2 style="margin:0;">Catalogue</h2>
+          </div>
+          <div class="left">
+            <input class="local-search" id="books-search" placeholder="Filter by title, author, barcode…">
+            <button class="btn btn-outline" id="books-export">Export Excel</button>
+            <label class="btn btn-outline" for="books-import">Import Excel</label>
+            <input type="file" id="books-import" accept=".xlsx,.xls,.csv">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Barcode</th><th>Title</th><th>Author</th><th>Category</th><th>Available</th><th></th></tr></thead>
+            <tbody id="books-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- STUDENTS -->
+    <section class="view" id="view-students">
+      <div class="topbar"><div><h1>Students</h1><div class="tag" id="students-count-tag">0 ON FILE</div></div></div>
+
+      <div class="panel">
+        <h2>Add a student</h2>
+        <div class="form-grid">
+          <div class="field"><label>Roll No.</label><input id="add-student-roll" placeholder="e.g. 22CE014"></div>
+          <div class="field"><label>Name</label><input id="add-student-name" placeholder="Full name"></div>
+          <div class="field"><label>Class / Dept.</label><input id="add-student-class" placeholder="e.g. 3rd Sem Civil"></div>
+          <div class="field"><label>Contact</label><input id="add-student-contact" placeholder="Phone or email"></div>
+        </div>
+        <div class="btn-row"><button class="btn btn-primary" id="add-student-btn">Add Student</button></div>
+        <div class="helper-msg ok" id="add-student-success">Student added.</div>
+        <div class="helper-msg err" id="add-student-error">Enter at least a roll number and name.</div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar">
+          <div class="left"><h2 style="margin:0;">Directory</h2></div>
+          <div class="left">
+            <input class="local-search" id="students-search" placeholder="Filter by name or roll no…">
+            <button class="btn btn-outline" id="students-export">Export Excel</button>
+            <label class="btn btn-outline" for="students-import">Import Excel</label>
+            <input type="file" id="students-import" accept=".xlsx,.xls,.csv">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Roll No.</th><th>Name</th><th>Class / Dept.</th><th>Contact</th><th>Books Held</th><th></th></tr></thead>
+            <tbody id="students-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECORDS -->
+    <section class="view" id="view-records">
+      <div class="topbar"><div><h1>Records</h1><div class="tag">FULL ISSUE / RETURN LOG</div></div></div>
+      <div class="panel">
+        <div class="toolbar">
+          <div class="filter-tabs" id="records-filters">
+            <button class="active" data-filter="all">All</button>
+            <button data-filter="issued">Issued</button>
+            <button data-filter="overdue">Overdue</button>
+            <button data-filter="returned">Returned</button>
+          </div>
+          <div class="left">
+            <input class="local-search" id="records-search" placeholder="Filter by book or student…">
+            <button class="btn btn-outline" id="records-export">Export Excel</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Book</th><th>Student</th><th>Issue Date</th><th>Due Date</th><th>Return Date</th><th>Status</th></tr></thead>
+            <tbody id="records-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <footer class="credit">LEDGER — LIBRARY DESK · DEMO DATA STORED IN THIS BROWSER ONLY</footer>
+  </main>
+</div>
+
+<!-- SCAN MODAL -->
+<div class="modal-overlay" id="scan-modal">
+  <div class="modal">
+    <button class="close" id="scan-close">✕</button>
+    <h3>Scan Barcode</h3>
+    <div class="sub">Point a book's barcode/ISBN at the camera.</div>
+    <div id="reader"></div>
+    <div class="scan-fallback">Using a USB scanner instead? Just click the text field and scan — no camera needed.</div>
+  </div>
+</div>
+
+<script>
+/* =====================================================
+   MOCK DATA LAYER — swap these functions for real API
+   calls to your backend/database. Everything else in
+   this file (rendering, forms, scanning, Excel) will
+   keep working as long as these return the same shapes.
+===================================================== */
+const STORE_KEY = "ledger_demo_v1";
+
+function seedData(){
+  return {
+    books: [
+      {barcode:"9780131103627", title:"The C Programming Language", author:"Kernighan & Ritchie", category:"Engineering", total:4, available:2},
+      {barcode:"9788173668473", title:"Strength of Materials", author:"R.K. Bansal", category:"Civil Engineering", total:6, available:5},
+      {barcode:"9780070ripc01", title:"Surveying Vol. 1", author:"B.C. Punmia", category:"Civil Engineering", total:3, available:0},
+      {barcode:"9780199456912", title:"Introduction to Algorithms", author:"Cormen et al.", category:"Computer Science", total:2, available:2},
+    ],
+    students: [
+      {roll:"22CE014", name:"Ankit Das", cls:"3rd Sem Civil", contact:"98xxxxxx21"},
+      {roll:"22CE027", name:"Priya Sharma", cls:"3rd Sem Civil", contact:"98xxxxxx55"},
+      {roll:"21CE009", name:"Rahul Bora", cls:"5th Sem Civil", contact:"90xxxxxx02"},
+    ],
+    issues: [
+      {id:1, barcode:"9780131103627", roll:"22CE014", issueDate: daysAgo(10), dueDate: daysAgo(-4), returnDate:null},
+      {id:2, barcode:"9780070ripc01".replace("ripc","70"), roll:"21CE009", issueDate: daysAgo(20), dueDate: daysAgo(6), returnDate:null},
+      {id:3, barcode:"9788173668473", title:null, roll:"22CE027", issueDate: daysAgo(30), dueDate: daysAgo(16), returnDate: daysAgo(15)},
+    ],
+    nextId: 4
+  };
 }
-function outTable(){
-  const out = state.issues.filter(i=>i.status==='out');
-  if(!out.length) return `<div class="empty">Nothing currently out.</div>`;
-  return `<div class="table-wrap"><table>
-    <tr><th>Book</th><th>Student</th><th>Due</th><th>Renewals</th><th>Status</th><th></th></tr>
-    ${out.map(r=>`<tr>
-      <td>${r.bookName}</td>
-      <td>${r.studentName}</td>
-      <td>${fmtDate(r.dueDate)}</td>
-      <td>${r.renewCount}</td>
-      <td>${statusBadge(r)}</td>
-      <td class="actions">
-        <button data-return="${r.issueNo}">Return</button>
-        <button data-renew="${r.issueNo}">Renew</button>
-      </td>
-    </tr>`).join('')}
-  </table></div>`;
+function daysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); }
+function daysFromNow(n){ const d=new Date(); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); }
+
+function loadDB(){
+  let raw = localStorage.getItem(STORE_KEY);
+  if(!raw){ const seed = seedData(); localStorage.setItem(STORE_KEY, JSON.stringify(seed)); return seed; }
+  return JSON.parse(raw);
+}
+function saveDB(db){ localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+let DB = loadDB();
+
+/* ---------- derived helpers ---------- */
+function findBook(barcode){ return DB.books.find(b=>b.barcode.trim().toLowerCase() === String(barcode).trim().toLowerCase()); }
+function findStudent(roll){ return DB.students.find(s=>s.roll.trim().toLowerCase() === String(roll).trim().toLowerCase()); }
+function activeIssueForBarcode(barcode){ return DB.issues.find(i=> i.barcode===barcode && !i.returnDate); }
+function loanStatus(issue){
+  if(issue.returnDate) return "returned";
+  const today = new Date().toISOString().slice(0,10);
+  return issue.dueDate < today ? "overdue" : "issued";
+}
+function statusPill(status){
+  const map = {issued:["Issued","pill-issued"], overdue:["Overdue","pill-overdue"], returned:["Returned","pill-returned"]};
+  const [label, cls] = map[status];
+  return `<span class="pill ${cls}">${label}</span>`;
 }
 
-function booksPanel(){
-  return `
-  <div class="card">
-    <h3>Add a book</h3>
-    <div class="row">
-      <div><label>Book title</label><input id="newBookName" placeholder="e.g. To Kill a Mockingbird"></div>
-      <div><label>Book code</label><input id="newBookCode" placeholder="e.g. B-102"></div>
-      <div><label>Copies</label><input id="newBookCopies" type="number" min="1" value="1"></div>
-    </div>
-    <button class="btn" id="addBookBtn">Add book</button>
-  </div>
-  <div class="card">
-    <h3>Import books from Excel</h3>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
-      Upload an .xlsx or .csv file with columns like Title/Name, Code, and Copies. Existing book codes are skipped.
-    </p>
-    <input type="file" id="importBooksFile" accept=".xlsx,.xls,.csv">
-  </div>
-  <div class="card">
-    <h3>All books (${state.books.length})</h3>
-    <input class="search" id="bookSearch" placeholder="Search by title or code…">
-    <div id="booksTable">${booksTable(state.books)}</div>
-  </div>`;
-}
-function booksTable(list){
-  if(!list.length) return `<div class="empty">No books added yet.</div>`;
-  return `<div class="table-wrap"><table>
-    <tr><th>Code</th><th>Title</th><th>Copies</th><th>Out</th><th></th></tr>
-    ${list.map(b=>`<tr>
-      <td>${b.code}</td><td>${b.name}</td><td>${b.copies}</td><td>${issuedCopiesCount(b.code)}</td>
-      <td class="actions"><button data-delbook="${b.code}">Remove</button></td>
-    </tr>`).join('')}
-  </table></div>`;
-}
+/* =====================================================
+   NAVIGATION
+===================================================== */
+document.querySelectorAll(".nav button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    document.getElementById("view-"+btn.dataset.view).classList.add("active");
+    if(btn.dataset.view==="dashboard") renderDashboard();
+    if(btn.dataset.view==="books") renderBooks();
+    if(btn.dataset.view==="students") renderStudents();
+    if(btn.dataset.view==="records") renderRecords();
+  });
+});
 
-function studentsPanel(){
-  return `
-  <div class="card">
-    <h3>Add a student</h3>
-    <div class="row">
-      <div><label>Student name</label><input id="newStudentName" placeholder="e.g. Riya Sharma"></div>
-      <div><label>Student ID</label><input id="newStudentId" placeholder="e.g. S-045"></div>
-    </div>
-    <button class="btn" id="addStudentBtn">Add student</button>
-  </div>
-  <div class="card">
-    <h3>Import students from Excel</h3>
-    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
-      Upload an .xlsx or .csv file with columns like Name and Student ID (roll no or enrolment no also work). Existing IDs are skipped.
-    </p>
-    <input type="file" id="importStudentsFile" accept=".xlsx,.xls,.csv">
-  </div>
-  <div class="card">
-    <h3>All students (${state.students.length})</h3>
-    <input class="search" id="studentSearch" placeholder="Search by name or ID…">
-    <div id="studentsTable">${studentsTable(state.students)}</div>
-  </div>`;
-}
-function studentsTable(list){
-  if(!list.length) return `<div class="empty">No students added yet.</div>`;
-  return `<div class="table-wrap"><table>
-    <tr><th>ID</th><th>Name</th><th>Books out</th><th></th></tr>
-    ${list.map(s=>{
-      const outCount = state.issues.filter(i=>i.studentId===s.id && i.status==='out').length;
-      return `<tr>
-        <td>${s.id}</td><td>${s.name}</td><td>${outCount}</td>
-        <td class="actions"><button data-delstudent="${s.id}">Remove</button></td>
+/* =====================================================
+   DASHBOARD
+===================================================== */
+document.getElementById("today-date").textContent = new Date().toLocaleDateString(undefined,{weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+function renderDashboard(){
+  document.getElementById("stat-books").textContent = DB.books.reduce((s,b)=>s+b.total,0);
+  const activeIssues = DB.issues.filter(i=>!i.returnDate);
+  document.getElementById("stat-issued").textContent = activeIssues.length;
+  document.getElementById("stat-overdue").textContent = activeIssues.filter(i=>loanStatus(i)==="overdue").length;
+  document.getElementById("stat-students").textContent = DB.students.length;
+
+  const soonOrOverdue = activeIssues
+    .map(i=>({...i, status: loanStatus(i)}))
+    .filter(i=>{
+      const due = new Date(i.dueDate), today = new Date();
+      const diff = (due-today)/86400000;
+      return i.status==="overdue" || diff<=3;
+    })
+    .sort((a,b)=> a.dueDate.localeCompare(b.dueDate));
+
+  const tbody = document.getElementById("dash-table");
+  if(soonOrOverdue.length===0){
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-state">Nothing due soon. The shelves are calm.</td></tr>`;
+  } else {
+    tbody.innerHTML = soonOrOverdue.map(i=>{
+      const book = findBook(i.barcode); const student = findStudent(i.roll);
+      return `<tr class="${i.status==='overdue'?'row-overdue':''}">
+        <td>${book?book.title:i.barcode}</td>
+        <td>${student?student.name+' · '+student.roll: i.roll}</td>
+        <td class="mono">${i.dueDate}</td>
+        <td>${statusPill(i.status)}</td>
       </tr>`;
-    }).join('')}
-  </table></div>`;
+    }).join("");
+  }
 }
 
-function historyPanel(){
-  const rows = [...state.issues].sort((a,b)=> (b.issueDate>a.issueDate?1:-1));
-  return `
-  <div class="card">
-    <h3>Full issue / return history (${rows.length})</h3>
-    <input class="search" id="historySearch" placeholder="Search by book, student, or issue no…">
-    <div id="historyTable">${historyTable(rows)}</div>
-  </div>`;
+document.getElementById("global-search").addEventListener("input", (e)=>{
+  const q = e.target.value.trim().toLowerCase();
+  const panel = document.getElementById("search-results-panel");
+  const body = document.getElementById("search-results-body");
+  if(!q){ panel.style.display="none"; return; }
+  panel.style.display="block";
+  const bookMatches = DB.books.filter(b=> b.title.toLowerCase().includes(q) || b.barcode.toLowerCase().includes(q) || b.author.toLowerCase().includes(q));
+  const studentMatches = DB.students.filter(s=> s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
+  document.getElementById("search-results-sub").textContent = `${bookMatches.length + studentMatches.length} match(es) for "${e.target.value}"`;
+  let rows = "";
+  bookMatches.forEach(b=>{
+    rows += `<tr><td>Book</td><td>${b.title}</td><td class="mono">${b.barcode} · ${b.author}</td><td>${b.available>0?statusPill('issued').replace('Issued', b.available+' available'):'<span class="pill pill-overdue">None available</span>'}</td></tr>`;
+  });
+  studentMatches.forEach(s=>{
+    const held = DB.issues.filter(i=>i.roll===s.roll && !i.returnDate).length;
+    rows += `<tr><td>Student</td><td>${s.name}</td><td class="mono">${s.roll} · ${s.cls}</td><td>${held} book(s) held</td></tr>`;
+  });
+  body.innerHTML = rows || `<tr><td colspan="4" class="empty-state">No matches.</td></tr>`;
+});
+
+/* =====================================================
+   BARCODE SCANNING (camera) — html5-qrcode
+===================================================== */
+let html5QrCode = null;
+let scanTargetInput = null;
+const scanModal = document.getElementById("scan-modal");
+
+document.querySelectorAll(".scan-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=> openScanner(document.getElementById(btn.dataset.scanTarget)));
+});
+document.getElementById("scan-close").addEventListener("click", closeScanner);
+
+function openScanner(targetInput){
+  scanTargetInput = targetInput;
+  scanModal.classList.add("show");
+  html5QrCode = new Html5Qrcode("reader");
+  html5QrCode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 220 },
+    (decodedText)=>{
+      if(scanTargetInput){
+        scanTargetInput.value = decodedText;
+        scanTargetInput.dispatchEvent(new Event('input'));
+        scanTargetInput.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter'}));
+      }
+      closeScanner();
+    },
+    ()=>{ /* ignore per-frame scan errors */ }
+  ).catch(()=>{
+    document.querySelector(".scan-fallback").innerHTML =
+      "Camera unavailable (needs HTTPS + permission). You can still type the barcode directly into the field.";
+  });
 }
-function historyTable(list){
-  if(!list.length) return `<div class="empty">No records yet.</div>`;
-  return `<div class="table-wrap"><table>
-    <tr><th>Issue no</th><th>Book</th><th>Student</th><th>Issued</th><th>Due</th><th>Returned</th><th>Renewals</th><th>Status</th><th></th></tr>
-    ${list.map(r=>`<tr>
-      <td>${r.issueNo}</td><td>${r.bookName}</td><td>${r.studentName}</td>
-      <td>${fmtDate(r.issueDate)}</td><td>${fmtDate(r.dueDate)}</td>
-      <td>${r.returnDate?fmtDate(r.returnDate):'-'}</td>
-      <td>${r.renewCount}</td><td>${statusBadge(r)}</td>
-      <td class="actions">
-        ${r.status==='out' ? `<button data-return="${r.issueNo}">Return</button><button data-renew="${r.issueNo}">Renew</button>` : ''}
-      </td>
-    </tr>`).join('')}
-  </table></div>`;
+function closeScanner(){
+  scanModal.classList.remove("show");
+  if(html5QrCode){
+    html5QrCode.stop().then(()=>html5QrCode.clear()).catch(()=>{});
+    html5QrCode = null;
+  }
 }
 
-/* ---------- event wiring ---------- */
-function attachHandlers(){
-  document.getElementById('signOutBtn')?.addEventListener('click', signOut);
-  document.getElementById('exportBtn')?.addEventListener('click', ()=>exportNow(false));
-  document.getElementById('loadSampleBtn')?.addEventListener('click', loadSampleData);
+/* =====================================================
+   ISSUE BOOK
+===================================================== */
+const issueBarcode = document.getElementById("issue-barcode");
+const issueRoll = document.getElementById("issue-roll");
+document.getElementById("issue-due").value = daysFromNow(14);
 
-  document.querySelectorAll('[data-tab]').forEach(b=>{
-    b.addEventListener('click', ()=>{ state.tab = b.dataset.tab; render(); });
-  });
+function checkIssueBook(){
+  const val = issueBarcode.value.trim();
+  const found = document.getElementById("issue-book-found");
+  const err = document.getElementById("issue-book-error");
+  found.classList.remove("show"); err.classList.remove("show");
+  if(!val) return null;
+  const book = findBook(val);
+  if(book){
+    document.getElementById("issue-book-title").textContent = book.title;
+    document.getElementById("issue-book-meta").textContent = `${book.author} · ${book.category} · ${book.available}/${book.total} available`;
+    found.classList.add("show");
+  } else {
+    err.classList.add("show");
+  }
+  return book;
+}
+function checkIssueStudent(){
+  const val = issueRoll.value.trim();
+  const found = document.getElementById("issue-student-found");
+  const err = document.getElementById("issue-student-error");
+  found.classList.remove("show"); err.classList.remove("show");
+  if(!val) return null;
+  const student = findStudent(val);
+  if(student){
+    const held = DB.issues.filter(i=>i.roll===student.roll && !i.returnDate).length;
+    document.getElementById("issue-student-name").textContent = student.name;
+    document.getElementById("issue-student-meta").textContent = `${student.cls} · currently holding ${held} book(s)`;
+    found.classList.add("show");
+  } else {
+    err.classList.add("show");
+  }
+  return student;
+}
+issueBarcode.addEventListener("input", checkIssueBook);
+issueBarcode.addEventListener("keydown", e=>{ if(e.key==="Enter") checkIssueBook(); });
+issueRoll.addEventListener("input", checkIssueStudent);
+issueRoll.addEventListener("keydown", e=>{ if(e.key==="Enter") checkIssueStudent(); });
 
-  // issue
-  document.getElementById('issueSubmit')?.addEventListener('click', ()=>{
-    const bookCode = document.getElementById('issueBook').value;
-    const studentId = document.getElementById('issueStudent').value;
-    const days = parseInt(document.getElementById('issueDays').value) || 14;
-    issueBook(bookCode, studentId, days);
+document.getElementById("issue-confirm-btn").addEventListener("click", ()=>{
+  const book = checkIssueBook();
+  const student = checkIssueStudent();
+  const successMsg = document.getElementById("issue-success");
+  successMsg.classList.remove("show");
+  if(!book || !student){ return; }
+  if(book.available <= 0){
+    successMsg.classList.remove("ok"); successMsg.classList.add("err","show");
+    successMsg.textContent = "No copies available for this title.";
+    return;
+  }
+  book.available -= 1;
+  DB.issues.push({
+    id: DB.nextId++, barcode: book.barcode, roll: student.roll,
+    issueDate: new Date().toISOString().slice(0,10),
+    dueDate: issueRoll_due_value(), returnDate: null
   });
-  document.querySelectorAll('[data-return]').forEach(b=>{
-    b.addEventListener('click', ()=>returnBook(b.dataset.return));
-  });
-  document.querySelectorAll('[data-renew]').forEach(b=>{
-    b.addEventListener('click', ()=>renewBook(b.dataset.renew));
-  });
+  saveDB(DB);
+  successMsg.classList.remove("err"); successMsg.classList.add("ok","show");
+  successMsg.textContent = `Issued "${book.title}" to ${student.name}. Due ${document.getElementById("issue-due").value}.`;
+  issueBarcode.value=""; issueRoll.value="";
+  document.getElementById("issue-book-found").classList.remove("show");
+  document.getElementById("issue-student-found").classList.remove("show");
+  document.getElementById("issue-due").value = daysFromNow(14);
+});
+function issueRoll_due_value(){ return document.getElementById("issue-due").value || daysFromNow(14); }
 
-  // books
-  document.getElementById('addBookBtn')?.addEventListener('click', ()=>{
-    const name = document.getElementById('newBookName').value.trim();
-    const code = document.getElementById('newBookCode').value.trim();
-    const copies = parseInt(document.getElementById('newBookCopies').value) || 1;
-    if(!name || !code){ toast("Enter both a title and a code"); return; }
-    if(addBook(name, code, copies)){
-      document.getElementById('newBookName').value='';
-      document.getElementById('newBookCode').value='';
-      document.getElementById('newBookCopies').value='1';
-    }
-  });
-  document.querySelectorAll('[data-delbook]').forEach(b=>{
-    b.addEventListener('click', ()=>deleteBook(b.dataset.delbook));
-  });
-  document.getElementById('importBooksFile')?.addEventListener('change', (e)=>{
-    if(e.target.files[0]) importBooksFile(e.target.files[0]);
-  });
-  document.getElementById('bookSearch')?.addEventListener('input', (e)=>{
-    const q = e.target.value.toLowerCase();
-    const filtered = state.books.filter(b=> b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
-    document.getElementById('booksTable').innerHTML = booksTable(filtered);
-    document.querySelectorAll('[data-delbook]').forEach(b=>{
-      b.addEventListener('click', ()=>deleteBook(b.dataset.delbook));
+/* =====================================================
+   RETURN / RENEW
+===================================================== */
+const returnBarcode = document.getElementById("return-barcode");
+let currentReturnIssue = null;
+
+function checkReturnBook(){
+  const val = returnBarcode.value.trim();
+  const err = document.getElementById("return-error");
+  const details = document.getElementById("return-details");
+  err.classList.remove("show"); details.style.display="none";
+  document.getElementById("return-success").classList.remove("show");
+  if(!val) return;
+  const issue = activeIssueForBarcode(val);
+  if(!issue){ err.classList.add("show"); currentReturnIssue=null; return; }
+  currentReturnIssue = issue;
+  const book = findBook(issue.barcode), student = findStudent(issue.roll);
+  const status = loanStatus(issue);
+  document.getElementById("return-row").innerHTML = `<tr class="${status==='overdue'?'row-overdue':''}">
+    <td>${book?book.title:issue.barcode}</td>
+    <td>${student?student.name+' · '+student.roll:issue.roll}</td>
+    <td class="mono">${issue.issueDate}</td>
+    <td class="mono">${issue.dueDate}</td>
+    <td>${statusPill(status)}</td>
+  </tr>`;
+  details.style.display="block";
+}
+returnBarcode.addEventListener("keydown", e=>{ if(e.key==="Enter") checkReturnBook(); });
+returnBarcode.addEventListener("input", ()=>{ if(returnBarcode.value.trim()==="") { document.getElementById("return-details").style.display="none"; } });
+
+document.getElementById("renew-btn").addEventListener("click", ()=>{
+  if(!currentReturnIssue) return;
+  const d = new Date(currentReturnIssue.dueDate);
+  d.setDate(d.getDate()+14);
+  currentReturnIssue.dueDate = d.toISOString().slice(0,10);
+  saveDB(DB);
+  checkReturnBook();
+  const msg = document.getElementById("return-success");
+  msg.classList.add("show"); msg.textContent = `Renewed — new due date ${currentReturnIssue.dueDate}.`;
+});
+
+document.getElementById("return-confirm-btn").addEventListener("click", ()=>{
+  if(!currentReturnIssue) return;
+  currentReturnIssue.returnDate = new Date().toISOString().slice(0,10);
+  const book = findBook(currentReturnIssue.barcode);
+  if(book) book.available = Math.min(book.total, book.available+1);
+  saveDB(DB);
+  const msg = document.getElementById("return-success");
+  msg.classList.add("show"); msg.textContent = "Marked as returned.";
+  document.getElementById("return-details").style.display="none";
+  returnBarcode.value="";
+  currentReturnIssue=null;
+});
+
+/* =====================================================
+   BOOKS
+===================================================== */
+function renderBooks(filter=""){
+  const q = filter.trim().toLowerCase();
+  const rows = DB.books.filter(b=> !q || b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.barcode.toLowerCase().includes(q));
+  document.getElementById("books-count-tag").textContent = `${DB.books.length} TITLE(S) ON FILE`;
+  const tbody = document.getElementById("books-table");
+  tbody.innerHTML = rows.length ? rows.map(b=>`
+    <tr>
+      <td class="mono">${b.barcode}</td>
+      <td>${b.title}</td>
+      <td>${b.author}</td>
+      <td>${b.category||"—"}</td>
+      <td>${b.available}/${b.total}</td>
+      <td class="row-actions"><button class="icon-btn danger" data-del-book="${b.barcode}">Remove</button></td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty-state">No books match.</td></tr>`;
+  tbody.querySelectorAll("[data-del-book]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      DB.books = DB.books.filter(b=>b.barcode!==btn.dataset.delBook);
+      saveDB(DB); renderBooks(document.getElementById("books-search").value);
     });
   });
+}
+document.getElementById("books-search").addEventListener("input", e=>renderBooks(e.target.value));
 
-  // students
-  document.getElementById('addStudentBtn')?.addEventListener('click', ()=>{
-    const name = document.getElementById('newStudentName').value.trim();
-    const id = document.getElementById('newStudentId').value.trim();
-    if(!name || !id){ toast("Enter both a name and an ID"); return; }
-    if(addStudent(name, id)){
-      document.getElementById('newStudentName').value='';
-      document.getElementById('newStudentId').value='';
+document.getElementById("add-book-btn").addEventListener("click", ()=>{
+  const barcode = document.getElementById("add-book-barcode").value.trim();
+  const title = document.getElementById("add-book-title").value.trim();
+  const author = document.getElementById("add-book-author").value.trim();
+  const category = document.getElementById("add-book-category").value.trim();
+  const copies = parseInt(document.getElementById("add-book-copies").value) || 1;
+  const okMsg = document.getElementById("add-book-success"), errMsg = document.getElementById("add-book-error");
+  okMsg.classList.remove("show"); errMsg.classList.remove("show");
+  if(!barcode || !title){ errMsg.classList.add("show"); return; }
+  if(findBook(barcode)){ errMsg.classList.add("show"); errMsg.textContent="A book with this barcode already exists."; return; }
+  DB.books.push({barcode, title, author: author||"Unknown", category: category||"General", total: copies, available: copies});
+  saveDB(DB);
+  okMsg.classList.add("show");
+  ["add-book-barcode","add-book-title","add-book-author","add-book-category"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("add-book-copies").value=1;
+  document.getElementById("add-book-lookup").classList.remove("show");
+  renderBooks(document.getElementById("books-search").value);
+});
+
+/* Open Library lookup for auto-fill */
+document.getElementById("lookup-book-btn").addEventListener("click", async ()=>{
+  const isbn = document.getElementById("add-book-barcode").value.trim();
+  const lookup = document.getElementById("add-book-lookup");
+  if(!isbn) return;
+  try{
+    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+    const data = await res.json();
+    const info = data[`ISBN:${isbn}`];
+    if(info){
+      document.getElementById("add-book-title").value = info.title || "";
+      document.getElementById("add-book-author").value = (info.authors||[]).map(a=>a.name).join(", ");
+      document.getElementById("add-book-lookup-title").textContent = info.title || "Untitled";
+      document.getElementById("add-book-lookup-meta").textContent = (info.authors||[]).map(a=>a.name).join(", ") + (info.publish_date? " · "+info.publish_date : "");
+      lookup.classList.add("show");
+    } else {
+      lookup.classList.remove("show");
+      alert("No online record found for that ISBN — enter details manually.");
     }
-  });
-  document.querySelectorAll('[data-delstudent]').forEach(b=>{
-    b.addEventListener('click', ()=>deleteStudent(b.dataset.delstudent));
-  });
-  document.getElementById('importStudentsFile')?.addEventListener('change', (e)=>{
-    if(e.target.files[0]) importStudentsFile(e.target.files[0]);
-  });
-  document.getElementById('studentSearch')?.addEventListener('input', (e)=>{
-    const q = e.target.value.toLowerCase();
-    const filtered = state.students.filter(s=> s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
-    document.getElementById('studentsTable').innerHTML = studentsTable(filtered);
-    document.querySelectorAll('[data-delstudent]').forEach(b=>{
-      b.addEventListener('click', ()=>deleteStudent(b.dataset.delstudent));
+  }catch(e){
+    alert("Couldn't reach the lookup service (needs internet access). Enter details manually.");
+  }
+});
+
+/* Books Excel export/import */
+document.getElementById("books-export").addEventListener("click", ()=>{
+  const ws = XLSX.utils.json_to_sheet(DB.books.map(b=>({
+    Barcode:b.barcode, Title:b.title, Author:b.author, Category:b.category, Total:b.total, Available:b.available
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Books");
+  XLSX.writeFile(wb, "books.xlsx");
+});
+document.getElementById("books-import").addEventListener("change", (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const wb = XLSX.read(ev.target.result, {type:"binary"});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    let added=0;
+    rows.forEach(r=>{
+      const barcode = String(r.Barcode||r.barcode||r.ISBN||"").trim();
+      const title = String(r.Title||r.title||"").trim();
+      if(!barcode || !title || findBook(barcode)) return;
+      const total = parseInt(r.Total||r.total||1) || 1;
+      DB.books.push({
+        barcode, title,
+        author: String(r.Author||r.author||"Unknown"),
+        category: String(r.Category||r.category||"General"),
+        total, available: parseInt(r.Available!==undefined?r.Available:total) || total
+      });
+      added++;
+    });
+    saveDB(DB); renderBooks();
+    alert(`Imported ${added} new book(s).`);
+    e.target.value = "";
+  };
+  reader.readAsBinaryString(file);
+});
+
+/* =====================================================
+   STUDENTS
+===================================================== */
+function renderStudents(filter=""){
+  const q = filter.trim().toLowerCase();
+  const rows = DB.students.filter(s=> !q || s.name.toLowerCase().includes(q) || s.roll.toLowerCase().includes(q));
+  document.getElementById("students-count-tag").textContent = `${DB.students.length} ON FILE`;
+  const tbody = document.getElementById("students-table");
+  tbody.innerHTML = rows.length ? rows.map(s=>{
+    const held = DB.issues.filter(i=>i.roll===s.roll && !i.returnDate).length;
+    return `<tr>
+      <td class="mono">${s.roll}</td><td>${s.name}</td><td>${s.cls||"—"}</td><td>${s.contact||"—"}</td>
+      <td>${held}</td>
+      <td class="row-actions"><button class="icon-btn danger" data-del-student="${s.roll}">Remove</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6" class="empty-state">No students match.</td></tr>`;
+  tbody.querySelectorAll("[data-del-student]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      DB.students = DB.students.filter(s=>s.roll!==btn.dataset.delStudent);
+      saveDB(DB); renderStudents(document.getElementById("students-search").value);
     });
   });
-
-  // history search
-  document.getElementById('historySearch')?.addEventListener('input', (e)=>{
-    const q = e.target.value.toLowerCase();
-    const filtered = state.issues.filter(r=>
-      r.bookName.toLowerCase().includes(q) || r.studentName.toLowerCase().includes(q) || r.issueNo.toLowerCase().includes(q)
-    ).sort((a,b)=> (b.issueDate>a.issueDate?1:-1));
-    document.getElementById('historyTable').innerHTML = historyTable(filtered);
-    document.querySelectorAll('[data-return]').forEach(b=>b.addEventListener('click', ()=>returnBook(b.dataset.return)));
-    document.querySelectorAll('[data-renew]').forEach(b=>b.addEventListener('click', ()=>renewBook(b.dataset.renew)));
-  });
-
-  // sign in
-  document.getElementById('signInBtn')?.addEventListener('click', ()=>{
-    const name = document.getElementById('staffName').value;
-    const password = document.getElementById('staffPassword').value;
-    trySignIn(name, password);
-  });
-  document.getElementById('staffPassword')?.addEventListener('keydown', (e)=>{
-    if(e.key === 'Enter') document.getElementById('signInBtn').click();
-  });
 }
+document.getElementById("students-search").addEventListener("input", e=>renderStudents(e.target.value));
 
-loadData();
+document.getElementById("add-student-btn").addEventListener("click", ()=>{
+  const roll = document.getElementById("add-student-roll").value.trim();
+  const name = document.getElementById("add-student-name").value.trim();
+  const cls = document.getElementById("add-student-class").value.trim();
+  const contact = document.getElementById("add-student-contact").value.trim();
+  const okMsg = document.getElementById("add-student-success"), errMsg = document.getElementById("add-student-error");
+  okMsg.classList.remove("show"); errMsg.classList.remove("show");
+  if(!roll || !name){ errMsg.classList.add("show"); return; }
+  if(findStudent(roll)){ errMsg.classList.add("show"); errMsg.textContent="A student with this roll number already exists."; return; }
+  DB.students.push({roll, name, cls, contact});
+  saveDB(DB);
+  okMsg.classList.add("show");
+  ["add-student-roll","add-student-name","add-student-class","add-student-contact"].forEach(id=>document.getElementById(id).value="");
+  renderStudents(document.getElementById("students-search").value);
+});
+
+document.getElementById("students-export").addEventListener("click", ()=>{
+  const ws = XLSX.utils.json_to_sheet(DB.students.map(s=>({
+    RollNo:s.roll, Name:s.name, Class:s.cls, Contact:s.contact
+  })));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Students");
+  XLSX.writeFile(wb, "students.xlsx");
+});
+document.getElementById("students-import").addEventListener("change", (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const wb = XLSX.read(ev.target.result, {type:"binary"});
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    let added=0;
+    rows.forEach(r=>{
+      const roll = String(r.RollNo||r.roll||r["Roll No"]||"").trim();
+      const name = String(r.Name||r.name||"").trim();
+      if(!roll || !name || findStudent(roll)) return;
+      DB.students.push({roll, name, cls:String(r.Class||r.class||""), contact:String(r.Contact||r.contact||"")});
+      added++;
+    });
+    saveDB(DB); renderStudents();
+    alert(`Imported ${added} new student(s).`);
+    e.target.value = "";
+  };
+  reader.readAsBinaryString(file);
+});
+
+/* =====================================================
+   RECORDS
+===================================================== */
+let recordsFilter = "all";
+document.querySelectorAll("#records-filters button").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll("#records-filters button").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    recordsFilter = btn.dataset.filter;
+    renderRecords(document.getElementById("records-search").value);
+  });
+});
+document.getElementById("records-search").addEventListener("input", e=>renderRecords(e.target.value));
+
+function renderRecords(filterText=""){
+  const q = filterText.trim().toLowerCase();
+  let rows = DB.issues.map(i=>({...i, status: loanStatus(i)}));
+  if(recordsFilter!=="all") rows = rows.filter(r=>r.status===recordsFilter);
+  if(q) rows = rows.filter(r=>{
+    const book = findBook(r.barcode), student = findStudent(r.roll);
+    return (book&&book.title.toLowerCase().includes(q)) || (student&&student.name.toLowerCase().includes(q)) || r.roll.toLowerCase().includes(q);
+  });
+  rows.sort((a,b)=> b.issueDate.localeCompare(a.issueDate));
+  const tbody = document.getElementById("records-table");
+  tbody.innerHTML = rows.length ? rows.map(r=>{
+    const book = findBook(r.barcode), student = findStudent(r.roll);
+    return `<tr class="${r.status==='overdue'?'row-overdue':''}">
+      <td>${book?book.title:r.barcode}</td>
+      <td>${student?student.name+' · '+student.roll:r.roll}</td>
+      <td class="mono">${r.issueDate}</td>
+      <td class="mono">${r.dueDate}</td>
+      <td class="mono">${r.returnDate||"—"}</td>
+      <td>${statusPill(r.status)}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6" class="empty-state">No records match.</td></tr>`;
+}
+document.getElementById("records-export").addEventListener("click", ()=>{
+  const rows = DB.issues.map(i=>{
+    const book=findBook(i.barcode), student=findStudent(i.roll);
+    return {
+      Book: book?book.title:i.barcode, Barcode:i.barcode,
+      Student: student?student.name:i.roll, RollNo:i.roll,
+      IssueDate:i.issueDate, DueDate:i.dueDate, ReturnDate:i.returnDate||"",
+      Status: loanStatus(i)
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Records");
+  XLSX.writeFile(wb, "issue_records.xlsx");
+});
+
+/* =====================================================
+   INIT
+===================================================== */
+renderDashboard();
+renderBooks();
+renderStudents();
+renderRecords();
 </script>
 </body>
 </html>
