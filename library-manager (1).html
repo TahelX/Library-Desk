@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library Desk</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --teal:#9ED3DC;
+    --yellow:#FEFD99;
+    --pink:#FCB7C7;
+    --mauve:#CA6180;
+    --teal-dark:#3d6b72;
+    --mauve-dark:#7a3650;
+    --ink:#2c2a2e;
+    --paper:#fffdf6;
+    --card:#ffffff;
+    --line:#e7e0d0;
+    --muted:#8a8579;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .app{max-width:960px;margin:0 auto;padding:0 16px 60px;}
+
+  /* header */
+  .topbar{
+    background:var(--mauve);
+    color:#fff;
+    padding:18px 16px;
+    margin:0 -16px 20px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand-mark{
+    width:34px;height:34px;border-radius:8px;background:var(--yellow);
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+  }
+  .brand h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.2px;}
+  .brand span{font-size:12px;opacity:.85;display:block;}
+  .who{font-size:13px;display:flex;align-items:center;gap:10px;}
+  .who button{
+    background:rgba(255,255,255,.18);
+    border:1px solid rgba(255,255,255,.4);
+    color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;cursor:pointer;
+  }
+  .who button:hover{background:rgba(255,255,255,.3);}
+
+  /* sign-in screen */
+  .signin-wrap{
+    max-width:380px;margin:60px auto;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:32px 28px;text-align:center;
+  }
+  .signin-wrap .brand-mark{margin:0 auto 14px;width:52px;height:52px;font-size:26px;border-radius:14px;}
+  .signin-wrap h2{margin:0 0 4px;font-size:20px;}
+  .signin-wrap p{color:var(--muted);font-size:13px;margin:0 0 24px;}
+  .signin-wrap select, .signin-wrap input{
+    width:100%;padding:11px 12px;margin-bottom:12px;border-radius:10px;
+    border:1px solid var(--line);font-size:14px;background:#fdfcf7;
+  }
+  .signin-wrap button.primary{
+    width:100%;padding:12px;border:none;border-radius:10px;
+    background:var(--mauve);color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:4px;
+  }
+  .signin-wrap button.primary:hover{background:var(--mauve-dark);}
+  .err{color:#b23a3a;font-size:12px;margin-top:-4px;margin-bottom:10px;display:none;}
+
+  /* tabs */
+  .tabs{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap;}
+  .tabs button{
+    padding:9px 16px;border-radius:20px;border:1px solid var(--line);
+    background:#fff;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;
+  }
+  .tabs button.active{background:var(--teal);border-color:var(--teal);}
+  .tabs button:hover:not(.active){background:#f4f1e6;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* stat cards */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .stat .num{font-size:26px;font-weight:700;}
+  .stat .lbl{font-size:12px;color:var(--muted);margin-top:2px;}
+  .stat.teal{background:#eaf6f8;}
+  .stat.pink{background:#fdf0f2;}
+  .stat.yellow{background:#fffce0;}
+
+  /* cards / forms */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px;}
+  .card h3{margin:0 0 14px;font-size:15px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:140px;}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;}
+  input,select{
+    width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);
+    font-size:14px;background:#fdfcf7;
+  }
+  button.btn{
+    padding:10px 18px;border-radius:8px;border:none;background:var(--teal-dark);
+    color:#fff;font-weight:600;font-size:13px;cursor:pointer;margin-top:12px;
+  }
+  button.btn:hover{opacity:.9;}
+  button.btn.secondary{background:var(--mauve);}
+  button.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{
+    text-align:left;padding:8px 8px;background:#f4f1e6;color:var(--muted);
+    font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;
+  }
+  td{padding:9px 8px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .badge{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600;display:inline-block;}
+  .badge.out{background:var(--pink);color:var(--mauve-dark);}
+  .badge.in{background:#dcefe1;color:#2e6b45;}
+  .badge.overdue{background:#f7d3c9;color:#8a3a20;}
+  .actions button{
+    padding:5px 10px;font-size:11px;border-radius:6px;border:1px solid var(--line);
+    background:#fff;cursor:pointer;margin-right:4px;
+  }
+  .actions button:hover{background:#f4f1e6;}
+  .empty{color:var(--muted);font-size:13px;padding:20px;text-align:center;}
+  .search{margin-bottom:12px;}
+  .table-wrap{overflow-x:auto;}
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--ink);color:#fff;padding:10px 20px;border-radius:20px;
+    font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;
+  }
+  .toast.show{opacity:1;}
+  .footer-note{font-size:12px;color:var(--muted);text-align:center;margin-top:30px;}
+  .small-link{background:none;border:none;color:var(--mauve-dark);font-size:12px;text-decoration:underline;cursor:pointer;padding:0;}
+</style>
+</head>
+<body>
+
+<div id="root" class="app"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const SESSION_KEY = "libdesk_session_user";
+
+/* ---------- Firebase config ----------
+   Paste the config from your Firebase project's web app setup here.
+   (Firebase Console > Project settings > General > Your apps > SDK setup and configuration)
+   If left as placeholders, the app falls back to this browser's local
+   storage only — no cross-device sync. */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDbIEUQrzp8Mq29KIJrPJwlEHSPG-vtysY",
+  authDomain: "library-desk-7aede.firebaseapp.com",
+  projectId: "library-desk-7aede",
+  storageBucket: "library-desk-7aede.firebasestorage.app",
+  messagingSenderId: "574482014556",
+  appId: "1:574482014556:web:7a142fb27f59b42db72199"
+};
+const firebaseReady = FIREBASE_CONFIG.apiKey !== "PASTE_YOUR_API_KEY";
+let db = null;
+if(firebaseReady){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+}
+const DOC_REF = firebaseReady ? db.collection('library').doc('data') : null;
+
+let state = {
+  user: sessionStorage.getItem(SESSION_KEY) || null,
+  tab: "dashboard",
+  books: [],
+  students: [],
+  issues: [],
+  accounts: {},
+  lastExport: null,
+  loaded: false,
+  authError: ""
+};
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function uid(prefix){
+  return prefix + Math.random().toString(36).slice(2,8).toUpperCase();
+}
+function todayStr(){
+  return new Date().toISOString().slice(0,10);
+}
+function addDays(dateStr, days){
+  const d = new Date(dateStr);
+  d.setDate(d.getDate()+days);
+  return d.toISOString().slice(0,10);
+}
+function fmtDate(d){
+  if(!d) return "-";
+  const dt = new Date(d);
+  return dt.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'});
+}
+function isOverdue(dueDate){
+  return new Date(dueDate) < new Date(todayStr());
+}
+
+/* ---------- storage ----------
+   Uses Firestore (synced live across every device) when FIREBASE_CONFIG
+   is filled in. Falls back to this browser's own localStorage otherwise
+   — that copy is only visible on this one device. */
+let unsubscribeSync = null;
+
+async function loadData(){
+  if(firebaseReady){
+    try{
+      const snap = await DOC_REF.get();
+      if(snap.exists) applyData(snap.data());
+    }catch(e){
+      toast("Couldn't reach the cloud database — check your Firebase setup");
+    }
+    // Listen for changes made from other devices and update live.
+    unsubscribeSync = DOC_REF.onSnapshot((snap)=>{
+      if(snap.exists){
+        applyData(snap.data());
+        if(state.loaded) render();
+      }
+    });
+  }else{
+    try{
+      const raw = localStorage.getItem('library-data');
+      if(raw) applyData(JSON.parse(raw));
+    }catch(e){
+      // no saved data yet, that's fine on first run
+    }
+  }
+  state.loaded = true;
+  checkAutoExport();
+  render();
+}
+function applyData(d){
+  state.books = d.books || [];
+  state.students = d.students || [];
+  state.issues = d.issues || [];
+  state.accounts = d.accounts || {};
+  state.lastExport = d.lastExport || null;
+}
+
+let saveTimer = null;
+async function saveData(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const payload = {
+      books: state.books,
+      students: state.students,
+      issues: state.issues,
+      accounts: state.accounts,
+      lastExport: state.lastExport
+    };
+    try{
+      if(firebaseReady){
+        await DOC_REF.set(payload);
+      }else{
+        localStorage.setItem('library-data', JSON.stringify(payload));
+      }
+    }catch(e){
+      toast("Couldn't save — check your connection or Firebase setup");
+    }
+  }, 250);
+}
+
+/* ---------- auth ----------
+   Accounts (name -> password hash) are stored in the same shared data
+   object, so any of your devices can sign in with the same credentials.
+   First time a name is used, it registers that password. After that,
+   the password must match. This is basic protection for a shared desk
+   tool, not bank-grade security — anyone with the file can read the
+   stored hashes if they dig into browser storage. */
+async function trySignIn(name, password){
+  name = name.trim();
+  if(!name || !password){
+    state.authError = "Enter a name and password";
+    render();
+    return;
+  }
+  const hash = await sha256(password);
+  const existing = state.accounts[name];
+  if(existing){
+    if(existing !== hash){
+      state.authError = "Wrong password for that name";
+      render();
+      return;
+    }
+  }else{
+    state.accounts[name] = hash;
+    saveData();
+  }
+  state.authError = "";
+  state.user = name;
+  sessionStorage.setItem(SESSION_KEY, name);
+  render();
+}
+function signOut(){
+  state.user = null;
+  sessionStorage.removeItem(SESSION_KEY);
+  render();
+}
+
+/* ---------- book / student / issue logic ---------- */
+function addBook(name, code, copies){
+  if(state.books.find(b=>b.code===code)){
+    toast("A book with that code already exists");
+    return false;
+  }
+  state.books.push({code, name, copies: copies||1, added: todayStr()});
+  saveData(); render(); toast("Book added");
+  return true;
+}
+function deleteBook(code){
+  if(state.issues.some(i=>i.bookCode===code && i.status==='out')){
+    toast("Can't delete — a copy is currently issued");
+    return;
+  }
+  state.books = state.books.filter(b=>b.code!==code);
+  saveData(); render();
+}
+function addStudent(name, id){
+  if(state.students.find(s=>s.id===id)){
+    toast("A student with that ID already exists");
+    return false;
+  }
+  state.students.push({id, name, added: todayStr()});
+  saveData(); render(); toast("Student added");
+  return true;
+}
+function deleteStudent(id){
+  if(state.issues.some(i=>i.studentId===id && i.status==='out')){
+    toast("Can't delete — this student has a book out");
+    return;
+  }
+  state.students = state.students.filter(s=>s.id!==id);
+  saveData(); render();
+}
+function issuedCopiesCount(code){
+  return state.issues.filter(i=>i.bookCode===code && i.status==='out').length;
+}
+function issueBook(bookCode, studentId, days){
+  const book = state.books.find(b=>b.code===bookCode);
+  const student = state.students.find(s=>s.id===studentId);
+  if(!book || !student) { toast("Pick a book and a student"); return; }
+  if(issuedCopiesCount(bookCode) >= book.copies){
+    toast("No copies available");
+    return;
+  }
+  const issueDate = todayStr();
+  state.issues.push({
+    issueNo: uid("ISS-"),
+    bookCode, bookName: book.name,
+    studentId, studentName: student.name,
+    issueDate,
+    dueDate: addDays(issueDate, days||14),
+    returnDate: null,
+    renewCount: 0,
+    status: 'out',
+    by: state.user
+  });
+  saveData(); render(); toast("Book issued");
+}
+function returnBook(issueNo){
+  const rec = state.issues.find(i=>i.issueNo===issueNo);
+  if(!rec) return;
+  rec.returnDate = todayStr();
+  rec.status = 'returned';
+  saveData(); render(); toast("Book returned");
+}
+function renewBook(issueNo){
+  const rec = state.issues.find(i=>i.issueNo===issueNo);
+  if(!rec || rec.status!=='out') return;
+  rec.dueDate = addDays(rec.dueDate, 14);
+  rec.renewCount += 1;
+  saveData(); render(); toast("Renewed for 14 more days");
+}
+
+/* ---------- sample data (civil engineering diploma library) ---------- */
+const CIVIL_TITLES = [
+  "Building Construction","Surveying I","Surveying II","Strength of Materials",
+  "Theory of Structures","Concrete Technology","Reinforced Cement Concrete Design",
+  "Steel Structure Design","Soil Mechanics and Foundation Engineering",
+  "Highway Engineering","Railway Engineering","Bridge Engineering",
+  "Irrigation Engineering","Water Supply and Sanitary Engineering",
+  "Environmental Engineering","Estimating Costing and Valuation",
+  "Construction Management","Engineering Mechanics","Fluid Mechanics and Hydraulics",
+  "Hydrology and Water Resources Engineering","Building Materials and Construction",
+  "Advanced Surveying","Structural Analysis","Foundation Engineering",
+  "Airport Engineering","Harbour and Dock Engineering","Town Planning",
+  "Remote Sensing and GIS","AutoCAD for Civil Engineers","Building Drawing",
+  "Civil Engineering Drawing","Repair and Rehabilitation of Structures",
+  "Prestressed Concrete","Earthquake Resistant Design of Structures",
+  "Transportation Engineering","Pavement Design","Geotechnical Engineering",
+  "Quantity Surveying","Construction Planning and Scheduling",
+  "Green Building Technology","Disaster Management","Project Management for Civil Engineers",
+  "Applied Mechanics","Strength of Materials Lab Manual","Concrete Lab Manual",
+  "Surveying Field Practice","Engineering Geology","Basic Civil Engineering",
+  "Mechanics of Solids","Design of Steel Structures","Design of RCC Structures",
+  "Water Resources Engineering","Sanitary Engineering","Construction Technology",
+  "Building Services","Landscape Architecture","Urban Infrastructure Planning",
+  "Modern Construction Materials","Value Engineering in Construction",
+  "Total Station Surveying","Highway Materials and Pavement Testing",
+  "Bridge Design and Construction","Dam Engineering","Coastal Engineering",
+  "Numerical Methods for Civil Engineers","Engineering Mathematics for Diploma",
+  "Applied Physics for Engineers","Applied Chemistry for Engineers",
+  "Environmental Science and Engineering","Communication Skills for Engineers",
+  "Entrepreneurship Development","Professional Practice Ethics and Human Values",
+  "Computer Aided Building Design","Building Maintenance and Repair",
+  "Estimation and Costing","Soil Testing Laboratory Manual",
+  "Fluid Mechanics Laboratory Manual","Surveying Instruments and Practice",
+  "Construction Equipment and Machinery","Masonry Structures",
+  "Timber Structures Design","Composite Materials in Construction",
+  "Smart Cities and Infrastructure","Building Information Modeling Basics",
+  "Structural Dynamics","Advanced Concrete Technology",
+  "Ground Improvement Techniques","Rock Mechanics","Tunnel Engineering",
+  "Water and Wastewater Treatment","Solid Waste Management",
+  "Air Pollution and Control","Noise Pollution Control",
+  "Occupational Health and Safety in Construction","Building Bye Laws and Codes",
+  "National Building Code Handbook","Indian Standard Codes for Civil Engineers",
+  "Engineering Economics","Strength of Materials Problems and Solutions",
+  "Basic Electrical and Electronics for Civil Engineers","Workshop Practice Manual",
+  "Engineering Graphics","Computer Applications in Civil Engineering"
+];
+function buildSampleBooks(){
+  const books = [];
+  let n = 1;
+  const authors = ["Khurmi","Punmia","Rangwala","Gupta","Duggal","Bhavikatti","Arora","Shah","Ramamrutham","Jindal"];
+  while(books.length < 300){
+    const title = CIVIL_TITLES[n % CIVIL_TITLES.length];
+    const author = authors[n % authors.length];
+    const edition = 2 + (n % 5);
+    const fullTitle = `${title} (${edition}th Ed. - ${author})`;
+    const code = `B-${String(n).padStart(3,'0')}`;
+    if(!books.find(b=>b.code===code)){
+      books.push({
+        code, name: fullTitle,
+        copies: 1 + (n % 3),
+        added: todayStr()
+      });
+    }
+    n++;
+  }
+  return books;
+}
+const SAMPLE_STUDENTS = [
+  {id:"AEI/24/CV/002", name:"ABHIJEET CHUTIA"},
+  {id:"AEI/24/CV/007", name:"AMLAN DUTTA"},
+  {id:"AEI/24/CV/013", name:"ARPITA CHAKRABARTY"},
+  {id:"AEI/24/CV/020", name:"BIBAN KEMPRAI"},
+  {id:"AEI/24/CV/039", name:"HRISHIKESH DUTTA"},
+  {id:"GP/24/CV/005", name:"ASTHA KASHYAP"},
+  {id:"GP/24/CV/016", name:"JUNMONI BASUMATARY"},
+  {id:"NOP/24/CV/013", name:"CHAITANYA SAIKIA"},
+  {id:"NOP/24/CV/029", name:"KANGKANA BORAH"},
+  {id:"SIP/24/CV/003", name:"ROHIT GOALA"},
+  {id:"SIP/24/CV/024", name:"NISHAT TASNIM SODIAL"},
+  {id:"DIP/24/CV/006", name:"ANINDITA CHETIA"},
+  {id:"DIP/24/CV/024", name:"KOYSIK DUTTA"},
+  {id:"BOP/24/CV/030", name:"MOSTAKIN MOSTAK"},
+  {id:"SON/24/CV/022", name:"JOHN BHARALI"}
+];
+function loadSampleData(){
+  if(state.books.length || state.students.length){
+    if(!confirm("This adds sample books, students, and a demo issue history to your existing records. Continue?")) return;
+  }
+  const sampleBooks = buildSampleBooks();
+  sampleBooks.forEach(b=>{ if(!state.books.find(x=>x.code===b.code)) state.books.push(b); });
+  SAMPLE_STUDENTS.forEach(s=>{ if(!state.students.find(x=>x.id===s.id)) state.students.push({...s, added: todayStr()}); });
+
+  // demo track record: a mix of returned, overdue, and currently-out issues
+  const demo = [
+    {book:"B-001", student:SAMPLE_STUDENTS[0].id, daysAgoIssued:20, daysLoan:14, returned:true, returnedDaysAgo:5},
+    {book:"B-002", student:SAMPLE_STUDENTS[1].id, daysAgoIssued:10, daysLoan:14, returned:false},
+    {book:"B-003", student:SAMPLE_STUDENTS[2].id, daysAgoIssued:25, daysLoan:14, returned:false},
+    {book:"B-004", student:SAMPLE_STUDENTS[3].id, daysAgoIssued:3, daysLoan:14, returned:false},
+    {book:"B-005", student:SAMPLE_STUDENTS[4].id, daysAgoIssued:30, daysLoan:14, returned:true, returnedDaysAgo:16},
+    {book:"B-006", student:SAMPLE_STUDENTS[5].id, daysAgoIssued:8, daysLoan:14, returned:false},
+  ];
+  demo.forEach(d=>{
+    const book = state.books.find(b=>b.code===d.book);
+    const student = state.students.find(s=>s.id===d.student);
+    if(!book || !student) return;
+    const issueDate = addDays(todayStr(), -d.daysAgoIssued);
+    const dueDate = addDays(issueDate, d.daysLoan);
+    state.issues.push({
+      issueNo: uid("ISS-"),
+      bookCode: book.code, bookName: book.name,
+      studentId: student.id, studentName: student.name,
+      issueDate, dueDate,
+      returnDate: d.returned ? addDays(todayStr(), -d.returnedDaysAgo) : null,
+      renewCount: 0,
+      status: d.returned ? 'returned' : 'out',
+      by: state.user
+    });
+  });
+  saveData(); render(); toast("Sample data loaded — 300 books, 15 students, 6 demo records");
+}
+
+/* ---------- import from excel ---------- */
+function readWorkbookFile(file, onDone){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      onDone(wb);
+    }catch(err){
+      toast("Couldn't read that file — is it a valid Excel file?");
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+function pick(row, keys){
+  for(const k of keys){
+    for(const rk of Object.keys(row)){
+      if(rk.toLowerCase().replace(/[^a-z0-9]/g,'') === k){
+        if(row[rk] !== undefined && row[rk] !== '') return row[rk];
+      }
+    }
+  }
+  return undefined;
+}
+function importBooksFile(file){
+  readWorkbookFile(file, (wb)=>{
+    const sheetName = wb.SheetNames.find(n=>/book/i.test(n)) || wb.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+    let added = 0, skipped = 0;
+    rows.forEach(row=>{
+      const name = pick(row, ['title','name','booktitle','book']);
+      const code = pick(row, ['code','bookcode']);
+      const copies = parseInt(pick(row, ['copies','qty','quantity'])) || 1;
+      if(!name || !code){ skipped++; return; }
+      const codeStr = String(code).trim();
+      if(state.books.find(b=>b.code===codeStr)){ skipped++; return; }
+      state.books.push({code: codeStr, name: String(name).trim(), copies, added: todayStr()});
+      added++;
+    });
+    saveData(); render();
+    toast(`Imported ${added} book${added===1?'':'s'}${skipped?`, skipped ${skipped}`:''}`);
+  });
+}
+function importStudentsFile(file){
+  readWorkbookFile(file, (wb)=>{
+    const sheetName = wb.SheetNames.find(n=>/student/i.test(n)) || wb.SheetNames[0];
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+    let added = 0, skipped = 0;
+    rows.forEach(row=>{
+      const name = pick(row, ['name','studentname']);
+      const id = pick(row, ['studentid','id','rollno','rollnumber','enrolmentno']);
+      if(!name || !id){ skipped++; return; }
+      const idStr = String(id).trim();
+      if(state.students.find(s=>s.id===idStr)){ skipped++; return; }
+      state.students.push({id: idStr, name: String(name).trim(), added: todayStr()});
+      added++;
+    });
+    saveData(); render();
+    toast(`Imported ${added} student${added===1?'':'s'}${skipped?`, skipped ${skipped}`:''}`);
+  });
+}
+
+/* ---------- export ---------- */
+function buildWorkbook(){
+  const wb = XLSX.utils.book_new();
+  const booksSheet = state.books.map(b=>({
+    Code:b.code, Title:b.name, Copies:b.copies,
+    "Currently issued": issuedCopiesCount(b.code),
+    "Date added": b.added
+  }));
+  const studentsSheet = state.students.map(s=>({
+    "Student ID": s.id, Name: s.name, "Date added": s.added
+  }));
+  const issuesSheet = state.issues.map(i=>({
+    "Issue no": i.issueNo, "Book code": i.bookCode, "Book title": i.bookName,
+    "Student ID": i.studentId, "Student name": i.studentName,
+    "Issue date": i.issueDate, "Due date": i.dueDate,
+    "Return date": i.returnDate || "", "Renewals": i.renewCount,
+    Status: i.status, "Issued by": i.by || ""
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(booksSheet), "Books");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(studentsSheet), "Students");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(issuesSheet), "Issue records");
+  return wb;
+}
+function exportNow(silent){
+  const wb = buildWorkbook();
+  const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+  XLSX.writeFile(wb, `library-records-${stamp}.xlsx`);
+  state.lastExport = new Date().toISOString();
+  saveData();
+  if(!silent) toast("Excel file downloaded");
+}
+function checkAutoExport(){
+  const last = state.lastExport ? new Date(state.lastExport) : null;
+  const dayMs = 24*60*60*1000;
+  if(!last || (Date.now() - last.getTime()) > dayMs){
+    // Auto export is due. Browsers can't silently write files in the
+    // background, so we trigger the download the next time someone opens the app.
+    setTimeout(()=>{ exportNow(true); toast("24hr backup exported to your downloads"); }, 800);
+  }
+}
+
+/* ---------- rendering ---------- */
+function render(){
+  const root = document.getElementById('root');
+  if(!state.loaded){
+    root.innerHTML = `<div class="empty" style="margin-top:80px;">Loading library data…</div>`;
+    return;
+  }
+  if(!state.user){
+    root.innerHTML = signInScreen();
+    attachHandlers();
+    return;
+  }
+  root.innerHTML = shell();
+  attachHandlers();
+}
+
+function signInScreen(){
+  const existingNames = Object.keys(state.accounts);
+  return `
+  <div class="signin-wrap">
+    <div class="brand-mark">📚</div>
+    <h2>Library Desk</h2>
+    <p>${existingNames.length ? "Sign in with your name and password" : "Create the first librarian account for this desk"}</p>
+    ${existingNames.length ? `<datalist id="knownNames">${existingNames.map(n=>`<option value="${n}">`).join('')}</datalist>` : ''}
+    <input id="staffName" list="knownNames" placeholder="Your name" autocomplete="username">
+    <input id="staffPassword" type="password" placeholder="Password" autocomplete="current-password">
+    ${state.authError ? `<div class="err" style="display:block;">${state.authError}</div>` : ''}
+    <button class="primary" id="signInBtn">Continue</button>
+    <p style="font-size:11px;color:var(--muted);margin-top:14px;">
+      New name? Just type it with a password to set up that account.
+    </p>
+  </div>`;
+}
+
+function shell(){
+  const overdue = state.issues.filter(i=>i.status==='out' && isOverdue(i.dueDate)).length;
+  const out = state.issues.filter(i=>i.status==='out').length;
+  return `
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">📚</div>
+      <div><h1>Library Desk</h1><span>${state.books.length} titles · ${state.students.length} students</span></div>
+    </div>
+    <div class="who">
+      Signed in as <strong>${state.user}</strong>
+      <button id="signOutBtn">Sign out</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    ${tabBtn('dashboard','Dashboard')}
+    ${tabBtn('issue','Issue a book')}
+    ${tabBtn('books','Books')}
+    ${tabBtn('students','Students')}
+    ${tabBtn('history','All records')}
+  </div>
+
+  <div class="panel active">
+    ${state.tab==='dashboard' ? dashboardPanel(out, overdue) : ''}
+    ${state.tab==='issue' ? issuePanel() : ''}
+    ${state.tab==='books' ? booksPanel() : ''}
+    ${state.tab==='students' ? studentsPanel() : ''}
+    ${state.tab==='history' ? historyPanel() : ''}
+  </div>
+
+  <div class="footer-note">
+    ${firebaseReady
+      ? `Synced live across all your devices.`
+      : `<span style="color:#b23a3a;">Cloud sync not set up — data is only saved on this device. Add your Firebase config to enable syncing.</span>`}
+    Last backup: ${state.lastExport ? fmtDate(state.lastExport) : 'never'} ·
+    <button class="small-link" id="exportBtn">Export Excel backup now</button>
+  </div>
+  `;
+}
+function tabBtn(id,label){
+  return `<button data-tab="${id}" class="${state.tab===id?'active':''}">${label}</button>`;
+}
+
+function dashboardPanel(out, overdue){
+  const recent = [...state.issues].sort((a,b)=> (b.issueDate>a.issueDate?1:-1)).slice(0,6);
+  return `
+  <div class="stats">
+    <div class="stat teal"><div class="num">${state.books.length}</div><div class="lbl">Books in library</div></div>
+    <div class="stat pink"><div class="num">${out}</div><div class="lbl">Currently issued</div></div>
+    <div class="stat yellow"><div class="num">${overdue}</div><div class="lbl">Overdue</div></div>
+    <div class="stat"><div class="num">${state.students.length}</div><div class="lbl">Registered students</div></div>
+  </div>
+  <div class="card">
+    <h3>Recent activity</h3>
+    ${recent.length? recentTable(recent) : `<div class="empty">No activity yet. Issue your first book from the "Issue a book" tab.</div>`}
+  </div>
+  <div class="card">
+    <h3>Starter data</h3>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+      Load 300 sample civil engineering diploma textbooks, 15 real student names, and a demo issue history
+      (some returned, some overdue, some currently out) so you can see how tracking works before adding your own.
+    </p>
+    <button class="btn ghost" id="loadSampleBtn">Load sample data</button>
+  </div>`;
+}
+function recentTable(rows){
+  return `<div class="table-wrap"><table>
+    <tr><th>Book</th><th>Student</th><th>Issued</th><th>Status</th></tr>
+    ${rows.map(r=>`<tr>
+      <td>${r.bookName}</td><td>${r.studentName}</td><td>${fmtDate(r.issueDate)}</td>
+      <td>${statusBadge(r)}</td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+function statusBadge(r){
+  if(r.status==='returned') return `<span class="badge in">Returned</span>`;
+  if(isOverdue(r.dueDate)) return `<span class="badge overdue">Overdue</span>`;
+  return `<span class="badge out">Issued</span>`;
+}
+
+function issuePanel(){
+  const available = state.books.filter(b=> issuedCopiesCount(b.code) < b.copies );
+  return `
+  <div class="card">
+    <h3>Issue a book</h3>
+    ${(!state.books.length || !state.students.length) ?
+      `<div class="empty">Add at least one book and one student first (see the Books and Students tabs).</div>` :
+      `<div class="row">
+        <div>
+          <label>Book</label>
+          <select id="issueBook">
+            <option value="">Select book</option>
+            ${available.map(b=>`<option value="${b.code}">${b.name} (${b.code}) — ${b.copies-issuedCopiesCount(b.code)} free</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>Student</label>
+          <select id="issueStudent">
+            <option value="">Select student</option>
+            ${state.students.map(s=>`<option value="${s.id}">${s.name} (${s.id})</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>Loan period (days)</label>
+          <input id="issueDays" type="number" value="14" min="1">
+        </div>
+      </div>
+      <button class="btn" id="issueSubmit">Issue book</button>`
+    }
+  </div>
+
+  <div class="card">
+    <h3>Books currently out</h3>
+    ${outTable()}
+  </div>`;
+}
+function outTable(){
+  const out = state.issues.filter(i=>i.status==='out');
+  if(!out.length) return `<div class="empty">Nothing currently out.</div>`;
+  return `<div class="table-wrap"><table>
+    <tr><th>Book</th><th>Student</th><th>Due</th><th>Renewals</th><th>Status</th><th></th></tr>
+    ${out.map(r=>`<tr>
+      <td>${r.bookName}</td>
+      <td>${r.studentName}</td>
+      <td>${fmtDate(r.dueDate)}</td>
+      <td>${r.renewCount}</td>
+      <td>${statusBadge(r)}</td>
+      <td class="actions">
+        <button data-return="${r.issueNo}">Return</button>
+        <button data-renew="${r.issueNo}">Renew</button>
+      </td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+function booksPanel(){
+  return `
+  <div class="card">
+    <h3>Add a book</h3>
+    <div class="row">
+      <div><label>Book title</label><input id="newBookName" placeholder="e.g. To Kill a Mockingbird"></div>
+      <div><label>Book code</label><input id="newBookCode" placeholder="e.g. B-102"></div>
+      <div><label>Copies</label><input id="newBookCopies" type="number" min="1" value="1"></div>
+    </div>
+    <button class="btn" id="addBookBtn">Add book</button>
+  </div>
+  <div class="card">
+    <h3>Import books from Excel</h3>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+      Upload an .xlsx or .csv file with columns like Title/Name, Code, and Copies. Existing book codes are skipped.
+    </p>
+    <input type="file" id="importBooksFile" accept=".xlsx,.xls,.csv">
+  </div>
+  <div class="card">
+    <h3>All books (${state.books.length})</h3>
+    <input class="search" id="bookSearch" placeholder="Search by title or code…">
+    <div id="booksTable">${booksTable(state.books)}</div>
+  </div>`;
+}
+function booksTable(list){
+  if(!list.length) return `<div class="empty">No books added yet.</div>`;
+  return `<div class="table-wrap"><table>
+    <tr><th>Code</th><th>Title</th><th>Copies</th><th>Out</th><th></th></tr>
+    ${list.map(b=>`<tr>
+      <td>${b.code}</td><td>${b.name}</td><td>${b.copies}</td><td>${issuedCopiesCount(b.code)}</td>
+      <td class="actions"><button data-delbook="${b.code}">Remove</button></td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+function studentsPanel(){
+  return `
+  <div class="card">
+    <h3>Add a student</h3>
+    <div class="row">
+      <div><label>Student name</label><input id="newStudentName" placeholder="e.g. Riya Sharma"></div>
+      <div><label>Student ID</label><input id="newStudentId" placeholder="e.g. S-045"></div>
+    </div>
+    <button class="btn" id="addStudentBtn">Add student</button>
+  </div>
+  <div class="card">
+    <h3>Import students from Excel</h3>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 12px;">
+      Upload an .xlsx or .csv file with columns like Name and Student ID (roll no or enrolment no also work). Existing IDs are skipped.
+    </p>
+    <input type="file" id="importStudentsFile" accept=".xlsx,.xls,.csv">
+  </div>
+  <div class="card">
+    <h3>All students (${state.students.length})</h3>
+    <input class="search" id="studentSearch" placeholder="Search by name or ID…">
+    <div id="studentsTable">${studentsTable(state.students)}</div>
+  </div>`;
+}
+function studentsTable(list){
+  if(!list.length) return `<div class="empty">No students added yet.</div>`;
+  return `<div class="table-wrap"><table>
+    <tr><th>ID</th><th>Name</th><th>Books out</th><th></th></tr>
+    ${list.map(s=>{
+      const outCount = state.issues.filter(i=>i.studentId===s.id && i.status==='out').length;
+      return `<tr>
+        <td>${s.id}</td><td>${s.name}</td><td>${outCount}</td>
+        <td class="actions"><button data-delstudent="${s.id}">Remove</button></td>
+      </tr>`;
+    }).join('')}
+  </table></div>`;
+}
+
+function historyPanel(){
+  const rows = [...state.issues].sort((a,b)=> (b.issueDate>a.issueDate?1:-1));
+  return `
+  <div class="card">
+    <h3>Full issue / return history (${rows.length})</h3>
+    <input class="search" id="historySearch" placeholder="Search by book, student, or issue no…">
+    <div id="historyTable">${historyTable(rows)}</div>
+  </div>`;
+}
+function historyTable(list){
+  if(!list.length) return `<div class="empty">No records yet.</div>`;
+  return `<div class="table-wrap"><table>
+    <tr><th>Issue no</th><th>Book</th><th>Student</th><th>Issued</th><th>Due</th><th>Returned</th><th>Renewals</th><th>Status</th><th></th></tr>
+    ${list.map(r=>`<tr>
+      <td>${r.issueNo}</td><td>${r.bookName}</td><td>${r.studentName}</td>
+      <td>${fmtDate(r.issueDate)}</td><td>${fmtDate(r.dueDate)}</td>
+      <td>${r.returnDate?fmtDate(r.returnDate):'-'}</td>
+      <td>${r.renewCount}</td><td>${statusBadge(r)}</td>
+      <td class="actions">
+        ${r.status==='out' ? `<button data-return="${r.issueNo}">Return</button><button data-renew="${r.issueNo}">Renew</button>` : ''}
+      </td>
+    </tr>`).join('')}
+  </table></div>`;
+}
+
+/* ---------- event wiring ---------- */
+function attachHandlers(){
+  document.getElementById('signOutBtn')?.addEventListener('click', signOut);
+  document.getElementById('exportBtn')?.addEventListener('click', ()=>exportNow(false));
+  document.getElementById('loadSampleBtn')?.addEventListener('click', loadSampleData);
+
+  document.querySelectorAll('[data-tab]').forEach(b=>{
+    b.addEventListener('click', ()=>{ state.tab = b.dataset.tab; render(); });
+  });
+
+  // issue
+  document.getElementById('issueSubmit')?.addEventListener('click', ()=>{
+    const bookCode = document.getElementById('issueBook').value;
+    const studentId = document.getElementById('issueStudent').value;
+    const days = parseInt(document.getElementById('issueDays').value) || 14;
+    issueBook(bookCode, studentId, days);
+  });
+  document.querySelectorAll('[data-return]').forEach(b=>{
+    b.addEventListener('click', ()=>returnBook(b.dataset.return));
+  });
+  document.querySelectorAll('[data-renew]').forEach(b=>{
+    b.addEventListener('click', ()=>renewBook(b.dataset.renew));
+  });
+
+  // books
+  document.getElementById('addBookBtn')?.addEventListener('click', ()=>{
+    const name = document.getElementById('newBookName').value.trim();
+    const code = document.getElementById('newBookCode').value.trim();
+    const copies = parseInt(document.getElementById('newBookCopies').value) || 1;
+    if(!name || !code){ toast("Enter both a title and a code"); return; }
+    if(addBook(name, code, copies)){
+      document.getElementById('newBookName').value='';
+      document.getElementById('newBookCode').value='';
+      document.getElementById('newBookCopies').value='1';
+    }
+  });
+  document.querySelectorAll('[data-delbook]').forEach(b=>{
+    b.addEventListener('click', ()=>deleteBook(b.dataset.delbook));
+  });
+  document.getElementById('importBooksFile')?.addEventListener('change', (e)=>{
+    if(e.target.files[0]) importBooksFile(e.target.files[0]);
+  });
+  document.getElementById('bookSearch')?.addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase();
+    const filtered = state.books.filter(b=> b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
+    document.getElementById('booksTable').innerHTML = booksTable(filtered);
+    document.querySelectorAll('[data-delbook]').forEach(b=>{
+      b.addEventListener('click', ()=>deleteBook(b.dataset.delbook));
+    });
+  });
+
+  // students
+  document.getElementById('addStudentBtn')?.addEventListener('click', ()=>{
+    const name = document.getElementById('newStudentName').value.trim();
+    const id = document.getElementById('newStudentId').value.trim();
+    if(!name || !id){ toast("Enter both a name and an ID"); return; }
+    if(addStudent(name, id)){
+      document.getElementById('newStudentName').value='';
+      document.getElementById('newStudentId').value='';
+    }
+  });
+  document.querySelectorAll('[data-delstudent]').forEach(b=>{
+    b.addEventListener('click', ()=>deleteStudent(b.dataset.delstudent));
+  });
+  document.getElementById('importStudentsFile')?.addEventListener('change', (e)=>{
+    if(e.target.files[0]) importStudentsFile(e.target.files[0]);
+  });
+  document.getElementById('studentSearch')?.addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase();
+    const filtered = state.students.filter(s=> s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
+    document.getElementById('studentsTable').innerHTML = studentsTable(filtered);
+    document.querySelectorAll('[data-delstudent]').forEach(b=>{
+      b.addEventListener('click', ()=>deleteStudent(b.dataset.delstudent));
+    });
+  });
+
+  // history search
+  document.getElementById('historySearch')?.addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase();
+    const filtered = state.issues.filter(r=>
+      r.bookName.toLowerCase().includes(q) || r.studentName.toLowerCase().includes(q) || r.issueNo.toLowerCase().includes(q)
+    ).sort((a,b)=> (b.issueDate>a.issueDate?1:-1));
+    document.getElementById('historyTable').innerHTML = historyTable(filtered);
+    document.querySelectorAll('[data-return]').forEach(b=>b.addEventListener('click', ()=>returnBook(b.dataset.return)));
+    document.querySelectorAll('[data-renew]').forEach(b=>b.addEventListener('click', ()=>renewBook(b.dataset.renew)));
+  });
+
+  // sign in
+  document.getElementById('signInBtn')?.addEventListener('click', ()=>{
+    const name = document.getElementById('staffName').value;
+    const password = document.getElementById('staffPassword').value;
+    trySignIn(name, password);
+  });
+  document.getElementById('staffPassword')?.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') document.getElementById('signInBtn').click();
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
